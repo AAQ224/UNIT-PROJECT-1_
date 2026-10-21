@@ -1,0 +1,10 @@
+[
+    {
+        "trip_id": 1,
+        "country": "ddddddddd",
+        "city": "dddddddddd",
+        "start_date": "2222-4-7",
+        "end_date": "2222-4-8",
+        "budget": 20000.0
+    }
+]

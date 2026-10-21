@@ -6,6 +6,12 @@ from tripmate.trip import (
     delete_trip
 )
 
+from tripmate.expenses import (
+    add_expense,
+    display_trip_expenses,
+    delete_expense
+)
+
 from tripmate.validation import (
     get_text_input,
     get_positive_float,
@@ -19,8 +25,16 @@ from tripmate.colors import (
     info
 )
 
+from tripmate.storage import (
+    load_trips,
+    save_trips,
+    load_expenses,
+    save_expenses
+)
 
-trips = []
+
+trips = load_trips()
+expenses = load_expenses()
 
 
 while True:
@@ -33,15 +47,23 @@ while True:
     print("3. Search Trip")
     print("4. Update Trip")
     print("5. Delete Trip")
-    print("6. Exit")
+    print("6. Add Expense")
+    print("7. Display Trip Expenses")
+    print("8. Delete Expense")
+    print("9. Exit")
 
     try:
+
         choice = int(
             input("Enter your choice: ")
         )
 
     except ValueError:
-        error("Please enter a number only.")
+
+        error(
+            "Please enter a number only."
+        )
+
         continue
 
 
@@ -72,10 +94,16 @@ while True:
             budget
         )
 
+        save_trips(
+            trips
+        )
+
 
     elif choice == 2:
 
-        display_trips(trips)
+        display_trips(
+            trips
+        )
 
 
     elif choice == 3:
@@ -92,11 +120,17 @@ while True:
         )
 
         if trip is None:
-            error("Trip not found.")
+
+            error(
+                "Trip not found."
+            )
 
         else:
+
             print()
-            print(trip.display_info())
+            print(
+                trip.display_info()
+            )
 
 
     elif choice == 4:
@@ -113,11 +147,18 @@ while True:
         )
 
         if trip is None:
-            error("Trip not found.")
+
+            error(
+                "Trip not found."
+            )
+
             continue
 
         print("\nCurrent trip:")
-        print(trip.display_info())
+
+        print(
+            trip.display_info()
+        )
 
         print("\nEnter new information:")
 
@@ -145,6 +186,10 @@ while True:
             budget
         )
 
+        save_trips(
+            trips
+        )
+
 
     elif choice == 5:
 
@@ -160,11 +205,18 @@ while True:
         )
 
         if trip is None:
-            error("Trip not found.")
+
+            error(
+                "Trip not found."
+            )
+
             continue
 
         print()
-        print(trip.display_info())
+
+        print(
+            trip.display_info()
+        )
 
         while True:
 
@@ -180,21 +232,129 @@ while True:
                     trip_id
                 )
 
+                save_trips(
+                    trips
+                )
+
                 break
 
             elif confirmation == "n":
 
-                warning("Delete cancelled.")
+                warning(
+                    "Delete cancelled."
+                )
+
                 break
 
             else:
 
-                error("Please enter y or n.")
+                error(
+                    "Please enter y or n."
+                )
 
 
     elif choice == 6:
 
-        warning("\nProgram ended.")
+        info("\n--- Add Expense ---")
+
+        trip_id = get_positive_int(
+            "Enter trip ID: "
+        )
+
+        trip = search_trip(
+            trips,
+            trip_id
+        )
+
+        if trip is None:
+
+            error(
+                "Trip not found."
+            )
+
+            continue
+
+        title = get_text_input(
+            "Enter expense title: "
+        )
+
+        category = get_text_input(
+            "Enter category: "
+        )
+
+        amount = get_positive_float(
+            "Enter amount: "
+        )
+
+        add_expense(
+            expenses,
+            trip_id,
+            title,
+            category,
+            amount
+        )
+
+        save_expenses(
+            expenses
+        )
+
+
+    elif choice == 7:
+
+        info("\n--- Trip Expenses ---")
+
+        trip_id = get_positive_int(
+            "Enter trip ID: "
+        )
+
+        trip = search_trip(
+            trips,
+            trip_id
+        )
+
+        if trip is None:
+
+            error(
+                "Trip not found."
+            )
+
+            continue
+
+        print()
+        print(
+            trip.display_info()
+        )
+
+        display_trip_expenses(
+            expenses,
+            trip_id
+        )
+
+
+    elif choice == 8:
+
+        info("\n--- Delete Expense ---")
+
+        expense_id = get_positive_int(
+            "Enter expense ID: "
+        )
+
+        delete_expense(
+            expenses,
+            expense_id
+        )
+
+        save_expenses(
+            expenses
+        )
+
+
+    elif choice == 9:
+
+        warning(
+            "\nProgram ended."
+        )
+
         break
 
 
@@ -202,5 +362,5 @@ while True:
 
         error(
             "Invalid choice. "
-            "Please choose from 1 to 6."
+            "Please choose from 1 to 9."
         )
