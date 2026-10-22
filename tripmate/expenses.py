@@ -4,30 +4,24 @@ from tripmate.colors import (
 )
 
 
-def generate_expense_id(expenses: list):
-
-    if not expenses:
-        return 1
-
-    highest_id = 0
-
-    for expense in expenses:
-
-        if expense["expense_id"] > highest_id:
-            highest_id = expense["expense_id"]
-
-    return highest_id + 1
+EXPENSE_CATEGORIES = [
+    "Accommodation",
+    "Transport",
+    "Food",
+    "Activities",
+    "Shopping",
+    "Other"
+]
 
 
 def add_expense(
     expenses: list,
+    expense_id: int,
     trip_id: int,
     title: str,
     category: str,
     amount: float
 ):
-
-    expense_id = generate_expense_id(expenses)
 
     expense = {
         "expense_id": expense_id,
@@ -43,7 +37,7 @@ def add_expense(
     success(f"Expense ID: {expense_id}")
 
 
-def display_trip_expenses(
+def get_trip_expenses(
     expenses: list,
     trip_id: int
 ):
@@ -55,33 +49,64 @@ def display_trip_expenses(
         if expense["trip_id"] == trip_id:
             trip_expenses.append(expense)
 
+    return trip_expenses
+
+
+def calculate_total_expenses(
+    expenses: list,
+    trip_id: int
+):
+
+    total = 0
+
+    for expense in expenses:
+
+        if expense["trip_id"] == trip_id:
+            total += expense["amount"]
+
+    return total
+
+
+def display_trip_expenses(
+    expenses: list,
+    trip_id: int
+):
+
+    trip_expenses = get_trip_expenses(
+        expenses,
+        trip_id
+    )
+
     if not trip_expenses:
-        error("No expenses found for this trip.")
+        print("No expenses recorded.")
         return
 
-    print("\n========================")
-    print("      TRIP EXPENSES")
-    print("========================")
+    print("\nExpenses:")
+    print("--------------------------------")
 
     for expense in trip_expenses:
 
         print(
-            f"Expense ID: {expense['expense_id']}"
+            f"Expense ID: "
+            f"{expense['expense_id']}"
         )
 
         print(
-            f"Title: {expense['title']}"
+            f"Title: "
+            f"{expense['title']}"
         )
 
         print(
-            f"Category: {expense['category']}"
+            f"Category: "
+            f"{expense['category']}"
         )
 
         print(
-            f"Amount: {expense['amount']:.2f} SAR"
+            f"Amount: "
+            f"{expense['amount']:,.2f} SAR"
         )
 
-        print("------------------------")
+        print("--------------------------------")
 
 
 def delete_expense(
@@ -95,8 +120,12 @@ def delete_expense(
 
             expenses.remove(expense)
 
-            success("Expense deleted successfully.")
+            success(
+                "Expense deleted successfully."
+            )
 
-            return
+            return True
 
     error("Expense not found.")
+
+    return False
