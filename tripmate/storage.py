@@ -18,15 +18,18 @@ EXPENSES_FILE = os.path.join(
 
 
 def initialize_storage():
+
     if not os.path.exists(DATA_FOLDER):
         os.mkdir(DATA_FOLDER)
 
     if not os.path.exists(TRIPS_FILE):
+
         with open(
             TRIPS_FILE,
             "w",
             encoding="utf-8"
         ) as file:
+
             json.dump(
                 {
                     "next_trip_id": 1,
@@ -37,11 +40,13 @@ def initialize_storage():
             )
 
     if not os.path.exists(EXPENSES_FILE):
+
         with open(
             EXPENSES_FILE,
             "w",
             encoding="utf-8"
         ) as file:
+
             json.dump(
                 {
                     "next_expense_id": 1,
@@ -53,6 +58,7 @@ def initialize_storage():
 
 
 def load_trips():
+
     initialize_storage()
 
     with open(
@@ -60,15 +66,18 @@ def load_trips():
         "r",
         encoding="utf-8"
     ) as file:
+
         data = json.load(file)
 
-    # Support old JSON format
+    # Support old list format
     if isinstance(data, list):
+
         old_trips = data
 
         highest_id = 0
 
         for trip in old_trips:
+
             if trip["trip_id"] > highest_id:
                 highest_id = trip["trip_id"]
 
@@ -82,6 +91,7 @@ def load_trips():
             "w",
             encoding="utf-8"
         ) as file:
+
             json.dump(
                 data,
                 file,
@@ -91,6 +101,7 @@ def load_trips():
     trips = []
 
     for trip_data in data["trips"]:
+
         trip = Trip(
             trip_data["trip_id"],
             trip_data["country"],
@@ -106,30 +117,61 @@ def load_trips():
 
 
 def save_trips(trips: list):
+
     initialize_storage()
+
+    # If there are no trips,
+    # reset the next ID to 1
+    if not trips:
+
+        data = {
+            "next_trip_id": 1,
+            "trips": []
+        }
+
+        with open(
+            TRIPS_FILE,
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            json.dump(
+                data,
+                file,
+                indent=4
+            )
+
+        return
 
     with open(
         TRIPS_FILE,
         "r",
         encoding="utf-8"
     ) as file:
+
         current_data = json.load(file)
 
     if isinstance(current_data, list):
+
         highest_id = 0
 
         for trip in current_data:
+
             if trip["trip_id"] > highest_id:
                 highest_id = trip["trip_id"]
 
         next_trip_id = highest_id + 1
 
     else:
-        next_trip_id = current_data["next_trip_id"]
+
+        next_trip_id = current_data[
+            "next_trip_id"
+        ]
 
     trips_data = []
 
     for trip in trips:
+
         trips_data.append(
             {
                 "trip_id": trip.trip_id,
@@ -151,6 +193,7 @@ def save_trips(trips: list):
         "w",
         encoding="utf-8"
     ) as file:
+
         json.dump(
             data,
             file,
@@ -159,6 +202,7 @@ def save_trips(trips: list):
 
 
 def get_next_trip_id():
+
     initialize_storage()
 
     with open(
@@ -166,12 +210,15 @@ def get_next_trip_id():
         "r",
         encoding="utf-8"
     ) as file:
+
         data = json.load(file)
 
     if isinstance(data, list):
+
         highest_id = 0
 
         for trip in data:
+
             if trip["trip_id"] > highest_id:
                 highest_id = trip["trip_id"]
 
@@ -180,15 +227,30 @@ def get_next_trip_id():
             "trips": data
         }
 
-    trip_id = data["next_trip_id"]
+    # If there are no trips,
+    # start again from 1
+    if not data["trips"]:
 
-    data["next_trip_id"] += 1
+        trip_id = 1
+
+        data["next_trip_id"] = 2
+
+    else:
+
+        trip_id = data[
+            "next_trip_id"
+        ]
+
+        data[
+            "next_trip_id"
+        ] += 1
 
     with open(
         TRIPS_FILE,
         "w",
         encoding="utf-8"
     ) as file:
+
         json.dump(
             data,
             file,
@@ -199,6 +261,7 @@ def get_next_trip_id():
 
 
 def load_expenses():
+
     initialize_storage()
 
     with open(
@@ -206,17 +269,26 @@ def load_expenses():
         "r",
         encoding="utf-8"
     ) as file:
+
         data = json.load(file)
 
-    # Support old JSON format
+    # Support old list format
     if isinstance(data, list):
+
         old_expenses = data
 
         highest_id = 0
 
         for expense in old_expenses:
-            if expense["expense_id"] > highest_id:
-                highest_id = expense["expense_id"]
+
+            if (
+                expense["expense_id"]
+                > highest_id
+            ):
+
+                highest_id = (
+                    expense["expense_id"]
+                )
 
         data = {
             "next_expense_id": highest_id + 1,
@@ -228,6 +300,7 @@ def load_expenses():
             "w",
             encoding="utf-8"
         ) as file:
+
             json.dump(
                 data,
                 file,
@@ -238,26 +311,66 @@ def load_expenses():
 
 
 def save_expenses(expenses: list):
+
     initialize_storage()
+
+    # If there are no expenses,
+    # reset the next ID to 1
+    if not expenses:
+
+        data = {
+            "next_expense_id": 1,
+            "expenses": []
+        }
+
+        with open(
+            EXPENSES_FILE,
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            json.dump(
+                data,
+                file,
+                indent=4
+            )
+
+        return
 
     with open(
         EXPENSES_FILE,
         "r",
         encoding="utf-8"
     ) as file:
+
         current_data = json.load(file)
 
     if isinstance(current_data, list):
+
         highest_id = 0
 
         for expense in current_data:
-            if expense["expense_id"] > highest_id:
-                highest_id = expense["expense_id"]
 
-        next_expense_id = highest_id + 1
+            if (
+                expense["expense_id"]
+                > highest_id
+            ):
+
+                highest_id = (
+                    expense["expense_id"]
+                )
+
+        next_expense_id = (
+            highest_id + 1
+        )
 
     else:
-        next_expense_id = current_data["next_expense_id"]
+
+        next_expense_id = (
+            current_data[
+                "next_expense_id"
+            ]
+        )
 
     data = {
         "next_expense_id": next_expense_id,
@@ -269,6 +382,7 @@ def save_expenses(expenses: list):
         "w",
         encoding="utf-8"
     ) as file:
+
         json.dump(
             data,
             file,
@@ -277,6 +391,7 @@ def save_expenses(expenses: list):
 
 
 def get_next_expense_id():
+
     initialize_storage()
 
     with open(
@@ -284,29 +399,53 @@ def get_next_expense_id():
         "r",
         encoding="utf-8"
     ) as file:
+
         data = json.load(file)
 
     if isinstance(data, list):
+
         highest_id = 0
 
         for expense in data:
-            if expense["expense_id"] > highest_id:
-                highest_id = expense["expense_id"]
+
+            if (
+                expense["expense_id"]
+                > highest_id
+            ):
+
+                highest_id = (
+                    expense["expense_id"]
+                )
 
         data = {
             "next_expense_id": highest_id + 1,
             "expenses": data
         }
 
-    expense_id = data["next_expense_id"]
+    # If there are no expenses,
+    # start again from 1
+    if not data["expenses"]:
 
-    data["next_expense_id"] += 1
+        expense_id = 1
+
+        data["next_expense_id"] = 2
+
+    else:
+
+        expense_id = data[
+            "next_expense_id"
+        ]
+
+        data[
+            "next_expense_id"
+        ] += 1
 
     with open(
         EXPENSES_FILE,
         "w",
         encoding="utf-8"
     ) as file:
+
         json.dump(
             data,
             file,

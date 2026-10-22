@@ -33,8 +33,13 @@ def add_expense(
 
     expenses.append(expense)
 
-    success("\nExpense added successfully.")
-    success(f"Expense ID: {expense_id}")
+    success(
+        "\nExpense added successfully."
+    )
+
+    success(
+        f"Expense ID: {expense_id}"
+    )
 
 
 def get_trip_expenses(
@@ -47,9 +52,31 @@ def get_trip_expenses(
     for expense in expenses:
 
         if expense["trip_id"] == trip_id:
-            trip_expenses.append(expense)
+
+            trip_expenses.append(
+                expense
+            )
 
     return trip_expenses
+
+
+def get_expense(
+    expenses: list,
+    trip_id: int,
+    expense_id: int
+):
+
+    for expense in expenses:
+
+        if (
+            expense["trip_id"] == trip_id
+            and
+            expense["expense_id"] == expense_id
+        ):
+
+            return expense
+
+    return None
 
 
 def calculate_total_expenses(
@@ -62,6 +89,7 @@ def calculate_total_expenses(
     for expense in expenses:
 
         if expense["trip_id"] == trip_id:
+
             total += expense["amount"]
 
     return total
@@ -78,21 +106,30 @@ def display_trip_expenses(
     )
 
     if not trip_expenses:
-        print("No expenses recorded.")
-        return
 
-    print("\nExpenses:")
-    print("--------------------------------")
+        print(
+            "No expenses recorded "
+            "for this trip."
+        )
+
+        return False
+
+    print(
+        "\n--------------------------------"
+    )
+
+    print(
+        "            EXPENSES"
+    )
+
+    print(
+        "--------------------------------"
+    )
 
     for expense in trip_expenses:
 
         print(
-            f"Expense ID: "
-            f"{expense['expense_id']}"
-        )
-
-        print(
-            f"Title: "
+            f"#{expense['expense_id']} | "
             f"{expense['title']}"
         )
 
@@ -106,26 +143,40 @@ def display_trip_expenses(
             f"{expense['amount']:,.2f} SAR"
         )
 
-        print("--------------------------------")
+        print(
+            "--------------------------------"
+        )
+
+    return True
 
 
 def delete_expense(
     expenses: list,
+    trip_id: int,
     expense_id: int
 ):
 
-    for expense in expenses:
+    expense = get_expense(
+        expenses,
+        trip_id,
+        expense_id
+    )
 
-        if expense["expense_id"] == expense_id:
+    if expense is None:
 
-            expenses.remove(expense)
+        error(
+            "Expense not found "
+            "for this trip."
+        )
 
-            success(
-                "Expense deleted successfully."
-            )
+        return False
 
-            return True
+    expenses.remove(
+        expense
+    )
 
-    error("Expense not found.")
+    success(
+        "Expense deleted successfully."
+    )
 
-    return False
+    return True

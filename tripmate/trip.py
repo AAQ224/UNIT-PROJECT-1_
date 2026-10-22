@@ -71,34 +71,54 @@ def search_trip(
     return None
 
 
-def update_trip(
-    trips: list,
-    trip_id: int,
-    country: str,
-    city: str,
+def update_country(
+    trip: Trip,
+    country: str
+):
+
+    trip.country = country
+
+    success(
+        "Country updated successfully."
+    )
+
+
+def update_city(
+    trip: Trip,
+    city: str
+):
+
+    trip.city = city
+
+    success(
+        "City updated successfully."
+    )
+
+
+def update_dates(
+    trip: Trip,
     start_date: str,
-    end_date: str,
+    end_date: str
+):
+
+    trip.start_date = start_date
+    trip.end_date = end_date
+
+    success(
+        "Trip dates updated successfully."
+    )
+
+
+def update_budget(
+    trip: Trip,
     budget: float
 ):
 
-    trip = search_trip(
-        trips,
-        trip_id
-    )
-
-    if trip is None:
-        error("Trip not found.")
-        return False
-
-    trip.country = country
-    trip.city = city
-    trip.start_date = start_date
-    trip.end_date = end_date
     trip.budget = budget
 
-    success("Trip updated successfully.")
-
-    return True
+    success(
+        "Budget updated successfully."
+    )
 
 
 def delete_trip(
@@ -113,10 +133,15 @@ def delete_trip(
     )
 
     if trip is None:
-        error("Trip not found.")
+
+        error(
+            "Trip not found."
+        )
+
         return False
 
-    # Delete all expenses linked to this trip
+    # Delete every expense linked
+    # to this trip.
     expenses[:] = [
         expense
         for expense in expenses

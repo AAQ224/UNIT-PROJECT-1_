@@ -1,9 +1,4 @@
-[
-    {
-        "expense_id": 1,
-        "trip_id": 1,
-        "title": "flayt",
-        "category": "main",
-        "amount": 4000.0
-    }
-]
+{
+    "next_expense_id": 1,
+    "expenses": []
+}

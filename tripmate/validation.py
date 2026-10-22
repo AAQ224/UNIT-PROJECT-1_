@@ -1,13 +1,22 @@
-from datetime import datetime, date
+import re
 
-from tripmate.colors import error
+from datetime import (
+    datetime,
+    date
+)
+
+from tripmate.colors import (
+    error
+)
 
 from tripmate.expenses import (
     EXPENSE_CATEGORIES
 )
 
 
-def get_text_input(message: str) -> str:
+def get_text_input(
+    message: str
+) -> str:
 
     while True:
 
@@ -103,6 +112,94 @@ def get_positive_int(
             )
 
 
+def get_non_negative_int(
+    message: str
+) -> int:
+
+    while True:
+
+        try:
+
+            value = int(
+                input(message)
+            )
+
+            if value < 0:
+
+                error(
+                    "Value cannot be negative."
+                )
+
+                continue
+
+            return value
+
+        except ValueError:
+
+            error(
+                "Please enter a valid number."
+            )
+
+
+def get_menu_choice(
+    message: str,
+    minimum: int,
+    maximum: int
+) -> int:
+
+    while True:
+
+        try:
+
+            choice = int(
+                input(message)
+            )
+
+        except ValueError:
+
+            error(
+                "Please enter a number only."
+            )
+
+            continue
+
+        if (
+            choice < minimum
+            or
+            choice > maximum
+        ):
+
+            error(
+                f"Please choose from "
+                f"{minimum} to {maximum}."
+            )
+
+            continue
+
+        return choice
+
+
+def get_yes_no(
+    message: str
+) -> bool:
+
+    while True:
+
+        answer = input(
+            message
+        ).strip().lower()
+
+        if answer == "y":
+            return True
+
+        if answer == "n":
+            return False
+
+        error(
+            "Please enter y or n."
+        )
+
+
 def get_date(
     message: str
 ) -> str:
@@ -113,6 +210,19 @@ def get_date(
             message
         ).strip()
 
+        # Force exactly YYYY-MM-DD
+        if not re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}",
+            date_input
+        ):
+
+            error(
+                "Please use this format: "
+                "YYYY-MM-DD"
+            )
+
+            continue
+
         try:
 
             entered_date = datetime.strptime(
@@ -120,21 +230,36 @@ def get_date(
                 "%Y-%m-%d"
             ).date()
 
-            if entered_date < date.today():
-
-                error(
-                    "Date cannot be in the past."
-                )
-
-                continue
-
-            return date_input
-
         except ValueError:
 
             error(
-                "Please use this format: YYYY-MM-DD"
+                "Invalid date."
             )
+
+            continue
+
+        if entered_date < date.today():
+
+            error(
+                "Date cannot be in the past."
+            )
+
+            continue
+
+        maximum_year = (
+            date.today().year + 10
+        )
+
+        if entered_date.year > maximum_year:
+
+            error(
+                "Trip date cannot be more "
+                "than 10 years in the future."
+            )
+
+            continue
+
+        return date_input
 
 
 def get_trip_dates():
@@ -142,11 +267,13 @@ def get_trip_dates():
     while True:
 
         start_date = get_date(
-            "Enter start date (YYYY-MM-DD): "
+            "Enter start date "
+            "(YYYY-MM-DD): "
         )
 
         end_date = get_date(
-            "Enter end date (YYYY-MM-DD): "
+            "Enter end date "
+            "(YYYY-MM-DD): "
         )
 
         start = datetime.strptime(
@@ -162,19 +289,25 @@ def get_trip_dates():
         if end < start:
 
             error(
-                "End date cannot be before start date."
+                "End date cannot be "
+                "before start date."
             )
 
             continue
 
-        return start_date, end_date
+        return (
+            start_date,
+            end_date
+        )
 
 
 def get_expense_category():
 
     while True:
 
-        print("\nChoose expense category:")
+        print(
+            "\nChoose expense category:"
+        )
 
         for index, category in enumerate(
             EXPENSE_CATEGORIES,
@@ -185,33 +318,11 @@ def get_expense_category():
                 f"{index}. {category}"
             )
 
-        try:
-
-            choice = int(
-                input(
-                    "Enter category number: "
-                )
-            )
-
-        except ValueError:
-
-            error(
-                "Please enter a number only."
-            )
-
-            continue
-
-        if (
-            choice < 1
-            or
-            choice > len(EXPENSE_CATEGORIES)
-        ):
-
-            error(
-                "Invalid category."
-            )
-
-            continue
+        choice = get_menu_choice(
+            "Enter category number: ",
+            1,
+            len(EXPENSE_CATEGORIES)
+        )
 
         return EXPENSE_CATEGORIES[
             choice - 1

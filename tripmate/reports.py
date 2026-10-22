@@ -5,120 +5,8 @@ from tripmate.colors import (
 
 from tripmate.expenses import (
     get_trip_expenses,
-    calculate_total_expenses,
-    EXPENSE_CATEGORIES
+    calculate_total_expenses
 )
-
-
-def display_trip_details(
-    trip,
-    expenses: list
-):
-
-    total_spent = calculate_total_expenses(
-        expenses,
-        trip.trip_id
-    )
-
-    remaining = (
-        trip.budget - total_spent
-    )
-
-    percentage_used = (
-        total_spent / trip.budget
-    ) * 100
-
-    info(
-        "\n================================"
-    )
-
-    info(
-        "          TRIP DETAILS"
-    )
-
-    info(
-        "================================"
-    )
-
-    print(
-        f"Trip ID: {trip.trip_id}"
-    )
-
-    print(
-        f"Destination: "
-        f"{trip.city}, {trip.country}"
-    )
-
-    print(
-        f"Start Date: {trip.start_date}"
-    )
-
-    print(
-        f"End Date: {trip.end_date}"
-    )
-
-    print()
-
-    print(
-        f"Budget:    "
-        f"{trip.budget:,.2f} SAR"
-    )
-
-    print(
-        f"Spent:     "
-        f"{total_spent:,.2f} SAR"
-    )
-
-    print(
-        f"Remaining: "
-        f"{remaining:,.2f} SAR"
-    )
-
-    print(
-        f"Used:      "
-        f"{percentage_used:.1f}%"
-    )
-
-    if remaining < 0:
-
-        warning(
-            "\nWarning: You are over budget!"
-        )
-
-    trip_expenses = get_trip_expenses(
-        expenses,
-        trip.trip_id
-    )
-
-    print("\nExpenses:")
-    print("--------------------------------")
-
-    if not trip_expenses:
-
-        print(
-            "No expenses recorded."
-        )
-
-        return
-
-    for expense in trip_expenses:
-
-        print(
-            f"#{expense['expense_id']} "
-            f"{expense['title']}"
-        )
-
-        print(
-            f"Category: "
-            f"{expense['category']}"
-        )
-
-        print(
-            f"Amount: "
-            f"{expense['amount']:,.2f} SAR"
-        )
-
-        print("--------------------------------")
 
 
 def display_all_trips(
@@ -182,6 +70,128 @@ def display_all_trips(
         )
 
 
+def display_trip_details(
+    trip,
+    expenses: list
+):
+
+    total_spent = (
+        calculate_total_expenses(
+            expenses,
+            trip.trip_id
+        )
+    )
+
+    remaining = (
+        trip.budget - total_spent
+    )
+
+    percentage_used = (
+        total_spent / trip.budget
+    ) * 100
+
+    info(
+        "\n================================"
+    )
+
+    info(
+        "          TRIP DETAILS"
+    )
+
+    info(
+        "================================"
+    )
+
+    print(
+        f"Trip ID: {trip.trip_id}"
+    )
+
+    print(
+        f"Destination: "
+        f"{trip.city}, {trip.country}"
+    )
+
+    print(
+        f"Start Date: "
+        f"{trip.start_date}"
+    )
+
+    print(
+        f"End Date: "
+        f"{trip.end_date}"
+    )
+
+    print()
+
+    print(
+        f"Budget:    "
+        f"{trip.budget:,.2f} SAR"
+    )
+
+    print(
+        f"Spent:     "
+        f"{total_spent:,.2f} SAR"
+    )
+
+    print(
+        f"Remaining: "
+        f"{remaining:,.2f} SAR"
+    )
+
+    print(
+        f"Used:      "
+        f"{percentage_used:.1f}%"
+    )
+
+    if remaining < 0:
+
+        warning(
+            "\nWarning: You are over budget!"
+        )
+
+    trip_expenses = get_trip_expenses(
+        expenses,
+        trip.trip_id
+    )
+
+    print(
+        "\nExpenses:"
+    )
+
+    print(
+        "--------------------------------"
+    )
+
+    if not trip_expenses:
+
+        print(
+            "No expenses recorded."
+        )
+
+        return
+
+    for expense in trip_expenses:
+
+        print(
+            f"#{expense['expense_id']} | "
+            f"{expense['title']}"
+        )
+
+        print(
+            f"Category: "
+            f"{expense['category']}"
+        )
+
+        print(
+            f"Amount: "
+            f"{expense['amount']:,.2f} SAR"
+        )
+
+        print(
+            "--------------------------------"
+        )
+
+
 def display_trip_report(
     trip,
     expenses: list
@@ -192,9 +202,11 @@ def display_trip_report(
         trip.trip_id
     )
 
-    total_spent = calculate_total_expenses(
-        expenses,
-        trip.trip_id
+    total_spent = (
+        calculate_total_expenses(
+            expenses,
+            trip.trip_id
+        )
     )
 
     remaining = (
@@ -251,81 +263,68 @@ def display_trip_report(
 
         return
 
-    highest_expense = trip_expenses[0]
+    highest_expense = max(
+        trip_expenses,
+        key=lambda expense: expense["amount"]
+    )
 
-    for expense in trip_expenses:
-
-        if (
-            expense["amount"]
-            >
-            highest_expense["amount"]
-        ):
-
-            highest_expense = expense
-
-    print("\nHighest Expense:")
+    print(
+        "\nHighest Expense:"
+    )
 
     print(
         f"{highest_expense['title']} - "
         f"{highest_expense['amount']:,.2f} SAR"
     )
 
-    print("\nExpense Breakdown:")
+    category_totals = {}
 
-    highest_category = None
-    highest_category_total = 0
+    for expense in trip_expenses:
 
-    for category in EXPENSE_CATEGORIES:
+        category = expense["category"]
 
-        category_total = 0
+        if category not in category_totals:
 
-        for expense in trip_expenses:
-
-            if (
-                expense["category"]
-                == category
-            ):
-
-                category_total += (
-                    expense["amount"]
-                )
-
-        if category_total > 0:
-
-            print(
-                f"{category}: "
-                f"{category_total:,.2f} SAR"
-            )
-
-        if (
-            category_total
-            >
-            highest_category_total
-        ):
-
-            highest_category_total = (
-                category_total
-            )
-
-            highest_category = (
+            category_totals[
                 category
-            )
+            ] = 0
 
-    if highest_category is not None:
+        category_totals[
+            category
+        ] += expense["amount"]
+
+    print(
+        "\nExpense Breakdown:"
+    )
+
+    for category, amount in (
+        category_totals.items()
+    ):
 
         print(
-            "\nHighest Spending Category:"
+            f"{category}: "
+            f"{amount:,.2f} SAR"
         )
 
-        print(
-            f"{highest_category} - "
-            f"{highest_category_total:,.2f} SAR"
-        )
+    highest_category = max(
+        category_totals,
+        key=category_totals.get
+    )
+
+    print(
+        "\nHighest Spending Category:"
+    )
+
+    print(
+        f"{highest_category} - "
+        f"{category_totals[highest_category]:,.2f} SAR"
+    )
 
     if percentage_used >= 100:
 
         warning(
-            "\nYou have exceeded your budget."
+            "\nYou have exceeded "
+            "your budget."
         )
 
     elif percentage_used >= 80:
