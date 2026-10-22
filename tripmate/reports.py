@@ -1,5 +1,8 @@
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+
 from tripmate.colors import (
-    info,
     warning
 )
 
@@ -7,6 +10,9 @@ from tripmate.expenses import (
     get_trip_expenses,
     calculate_total_expenses
 )
+
+
+console = Console()
 
 
 def display_all_trips(
@@ -22,17 +28,46 @@ def display_all_trips(
 
         return
 
-    info(
-        "\n================================"
+    table = Table(
+        title="My Trips",
+        show_header=True,
+        header_style="bold cyan"
     )
 
-    info(
-        "            MY TRIPS"
+    table.add_column(
+        "ID",
+        justify="center"
     )
 
-    info(
-        "================================"
+    table.add_column(
+        "Destination"
     )
+
+    table.add_column(
+        "Dates",
+        justify="center"
+    )
+
+    table.add_column(
+        "Budget",
+        justify="right"
+    )
+
+    table.add_column(
+        "Spent",
+        justify="right"
+    )
+
+    table.add_column(
+        "Remaining",
+        justify="right"
+    )
+
+    table.add_column(
+        "Used",
+        justify="right"
+    )
+
 
     for trip in trips:
 
@@ -45,29 +80,79 @@ def display_all_trips(
             trip.budget - spent
         )
 
-        print(
-            f"\nID: {trip.trip_id} | "
-            f"{trip.city}, {trip.country}"
+        percentage_used = (
+            spent / trip.budget
+        ) * 100
+
+
+        if remaining < 0:
+
+            remaining_text = (
+                f"[red]"
+                f"{remaining:,.2f} SAR"
+                f"[/red]"
+            )
+
+        else:
+
+            remaining_text = (
+                f"[green]"
+                f"{remaining:,.2f} SAR"
+                f"[/green]"
+            )
+
+
+        if percentage_used >= 100:
+
+            percentage_text = (
+                f"[red]"
+                f"{percentage_used:.1f}%"
+                f"[/red]"
+            )
+
+        elif percentage_used >= 80:
+
+            percentage_text = (
+                f"[yellow]"
+                f"{percentage_used:.1f}%"
+                f"[/yellow]"
+            )
+
+        else:
+
+            percentage_text = (
+                f"[green]"
+                f"{percentage_used:.1f}%"
+                f"[/green]"
+            )
+
+
+        table.add_row(
+            str(
+                trip.trip_id
+            ),
+
+            f"{trip.city}, "
+            f"{trip.country}",
+
+            f"{trip.start_date}\n"
+            f"{trip.end_date}",
+
+            f"{trip.budget:,.2f} SAR",
+
+            f"{spent:,.2f} SAR",
+
+            remaining_text,
+
+            percentage_text
         )
 
-        print(
-            f"Budget: "
-            f"{trip.budget:,.2f} SAR"
-        )
 
-        print(
-            f"Spent: "
-            f"{spent:,.2f} SAR"
-        )
+    console.print()
 
-        print(
-            f"Remaining: "
-            f"{remaining:,.2f} SAR"
-        )
-
-        print(
-            "--------------------------------"
-        )
+    console.print(
+        table
+    )
 
 
 def display_trip_details(
@@ -90,106 +175,115 @@ def display_trip_details(
         total_spent / trip.budget
     ) * 100
 
-    info(
-        "\n================================"
-    )
 
-    info(
-        "          TRIP DETAILS"
-    )
+    details = (
+        f"[bold]Trip ID:[/bold] "
+        f"{trip.trip_id}\n"
 
-    info(
-        "================================"
-    )
+        f"[bold]Destination:[/bold] "
+        f"{trip.city}, {trip.country}\n"
 
-    print(
-        f"Trip ID: {trip.trip_id}"
-    )
+        f"[bold]Start Date:[/bold] "
+        f"{trip.start_date}\n"
 
-    print(
-        f"Destination: "
-        f"{trip.city}, {trip.country}"
-    )
+        f"[bold]End Date:[/bold] "
+        f"{trip.end_date}\n\n"
 
-    print(
-        f"Start Date: "
-        f"{trip.start_date}"
-    )
+        f"[bold]Budget:[/bold] "
+        f"{trip.budget:,.2f} SAR\n"
 
-    print(
-        f"End Date: "
-        f"{trip.end_date}"
-    )
+        f"[bold]Spent:[/bold] "
+        f"{total_spent:,.2f} SAR\n"
 
-    print()
+        f"[bold]Remaining:[/bold] "
+        f"{remaining:,.2f} SAR\n"
 
-    print(
-        f"Budget:    "
-        f"{trip.budget:,.2f} SAR"
-    )
-
-    print(
-        f"Spent:     "
-        f"{total_spent:,.2f} SAR"
-    )
-
-    print(
-        f"Remaining: "
-        f"{remaining:,.2f} SAR"
-    )
-
-    print(
-        f"Used:      "
+        f"[bold]Budget Used:[/bold] "
         f"{percentage_used:.1f}%"
     )
 
+
+    console.print()
+
+    console.print(
+        Panel(
+            details,
+            title="Trip Details",
+            border_style="cyan"
+        )
+    )
+
+
     if remaining < 0:
 
-        warning(
-            "\nWarning: You are over budget!"
+        console.print(
+            "[bold red]"
+            "Warning: You are over budget!"
+            "[/bold red]"
         )
+
 
     trip_expenses = get_trip_expenses(
         expenses,
         trip.trip_id
     )
 
-    print(
-        "\nExpenses:"
-    )
-
-    print(
-        "--------------------------------"
-    )
 
     if not trip_expenses:
 
-        print(
+        console.print(
+            "\n[yellow]"
             "No expenses recorded."
+            "[/yellow]"
         )
 
         return
 
+
+    table = Table(
+        title="Expenses",
+        header_style="bold cyan"
+    )
+
+    table.add_column(
+        "ID",
+        justify="center"
+    )
+
+    table.add_column(
+        "Title"
+    )
+
+    table.add_column(
+        "Category"
+    )
+
+    table.add_column(
+        "Amount",
+        justify="right"
+    )
+
+
     for expense in trip_expenses:
 
-        print(
-            f"#{expense['expense_id']} | "
-            f"{expense['title']}"
-        )
+        table.add_row(
+            str(
+                expense["expense_id"]
+            ),
 
-        print(
-            f"Category: "
-            f"{expense['category']}"
-        )
+            expense["title"],
 
-        print(
-            f"Amount: "
+            expense["category"],
+
             f"{expense['amount']:,.2f} SAR"
         )
 
-        print(
-            "--------------------------------"
-        )
+
+    console.print()
+
+    console.print(
+        table
+    )
 
 
 def display_trip_report(
@@ -217,71 +311,83 @@ def display_trip_report(
         total_spent / trip.budget
     ) * 100
 
-    info(
-        "\n================================"
+
+    summary_table = Table(
+        title="Trip Report",
+        header_style="bold cyan"
     )
 
-    info(
-        "           TRIP REPORT"
+    summary_table.add_column(
+        "Destination"
     )
 
-    info(
-        "================================"
+    summary_table.add_column(
+        "Budget",
+        justify="right"
     )
 
-    print(
-        f"Destination: "
-        f"{trip.city}, {trip.country}"
+    summary_table.add_column(
+        "Spent",
+        justify="right"
     )
 
-    print(
-        f"Budget: "
-        f"{trip.budget:,.2f} SAR"
+    summary_table.add_column(
+        "Remaining",
+        justify="right"
     )
 
-    print(
-        f"Total Spent: "
-        f"{total_spent:,.2f} SAR"
+    summary_table.add_column(
+        "Used",
+        justify="right"
     )
 
-    print(
-        f"Remaining: "
-        f"{remaining:,.2f} SAR"
-    )
 
-    print(
-        f"Budget Used: "
+    summary_table.add_row(
+        f"{trip.city}, "
+        f"{trip.country}",
+
+        f"{trip.budget:,.2f} SAR",
+
+        f"{total_spent:,.2f} SAR",
+
+        f"{remaining:,.2f} SAR",
+
         f"{percentage_used:.1f}%"
     )
 
+
+    console.print()
+
+    console.print(
+        summary_table
+    )
+
+
     if not trip_expenses:
 
-        print(
-            "\nNo expenses available "
+        console.print(
+            "\n[yellow]"
+            "No expenses available "
             "for analysis."
+            "[/yellow]"
         )
 
         return
+
 
     highest_expense = max(
         trip_expenses,
         key=lambda expense: expense["amount"]
     )
 
-    print(
-        "\nHighest Expense:"
-    )
-
-    print(
-        f"{highest_expense['title']} - "
-        f"{highest_expense['amount']:,.2f} SAR"
-    )
 
     category_totals = {}
 
     for expense in trip_expenses:
 
-        category = expense["category"]
+        category = expense[
+            "category"
+        ]
 
         if category not in category_totals:
 
@@ -291,45 +397,79 @@ def display_trip_report(
 
         category_totals[
             category
-        ] += expense["amount"]
+        ] += expense[
+            "amount"
+        ]
 
-    print(
-        "\nExpense Breakdown:"
+
+    category_table = Table(
+        title="Expense Breakdown",
+        header_style="bold cyan"
     )
+
+    category_table.add_column(
+        "Category"
+    )
+
+    category_table.add_column(
+        "Amount",
+        justify="right"
+    )
+
 
     for category, amount in (
         category_totals.items()
     ):
 
-        print(
-            f"{category}: "
+        category_table.add_row(
+            category,
             f"{amount:,.2f} SAR"
         )
+
+
+    console.print()
+
+    console.print(
+        category_table
+    )
+
 
     highest_category = max(
         category_totals,
         key=category_totals.get
     )
 
-    print(
-        "\nHighest Spending Category:"
+
+    console.print(
+        Panel(
+            (
+                f"[bold]Highest Expense:[/bold]\n"
+                f"{highest_expense['title']} - "
+                f"{highest_expense['amount']:,.2f} SAR"
+                f"\n\n"
+                f"[bold]Highest Spending Category:[/bold]\n"
+                f"{highest_category} - "
+                f"{category_totals[highest_category]:,.2f} SAR"
+            ),
+            title="Highlights",
+            border_style="cyan"
+        )
     )
 
-    print(
-        f"{highest_category} - "
-        f"{category_totals[highest_category]:,.2f} SAR"
-    )
 
     if percentage_used >= 100:
 
-        warning(
-            "\nYou have exceeded "
-            "your budget."
+        console.print(
+            "[bold red]"
+            "You have exceeded your budget."
+            "[/bold red]"
         )
 
     elif percentage_used >= 80:
 
-        warning(
-            "\nYou have used more than "
+        console.print(
+            "[bold yellow]"
+            "You have used more than "
             "80% of your budget."
+            "[/bold yellow]"
         )

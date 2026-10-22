@@ -3,11 +3,11 @@
     "trips": [
         {
             "trip_id": 1,
-            "country": "aaaaaaaaaaa",
-            "city": "aaaaaaaaaaaa",
-            "start_date": "2026-12-31",
-            "end_date": "2026-12-31",
-            "budget": 200000.0
+            "country": "saudi arabia",
+            "city": "dammam",
+            "start_date": "2026-12-01",
+            "end_date": "2026-12-03",
+            "budget": 10000.0
         }
     ]
 }

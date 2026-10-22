@@ -31,8 +31,7 @@ from tripmate.validation import (
 from tripmate.colors import (
     error,
     warning,
-    info,
-    success
+    info
 )
 
 from tripmate.storage import (
@@ -48,6 +47,10 @@ from tripmate.reports import (
     display_all_trips,
     display_trip_details,
     display_trip_report
+)
+
+from tripmate.weather import (
+    display_weather_for_trip
 )
 
 
@@ -158,6 +161,7 @@ while True:
 
             continue
 
+
         display_all_trips(
             trips,
             expenses
@@ -171,13 +175,17 @@ while True:
             "Enter trip ID: "
         )
 
+
         if trip_id == 0:
+
             continue
+
 
         trip = search_trip(
             trips,
             trip_id
         )
+
 
         if trip is None:
 
@@ -188,9 +196,6 @@ while True:
             continue
 
 
-        # ======================
-        # SELECTED TRIP MENU
-        # ======================
         while True:
 
             print(
@@ -198,7 +203,8 @@ while True:
             )
 
             print(
-                f"   {trip.city}, {trip.country}"
+                f"   {trip.city}, "
+                f"{trip.country}"
             )
 
             print(
@@ -226,17 +232,21 @@ while True:
             )
 
             print(
-                "6. Delete Trip"
+                "6. Check Trip Weather"
             )
 
             print(
-                "7. Back"
+                "7. Delete Trip"
+            )
+
+            print(
+                "8. Back"
             )
 
             trip_choice = get_menu_choice(
                 "Enter your choice: ",
                 1,
-                7
+                8
             )
 
 
@@ -290,6 +300,7 @@ while True:
                             5
                         )
                     )
+
 
                     if update_choice == 1:
 
@@ -355,11 +366,12 @@ while True:
                             )
                         )
 
+
                         if budget < current_spent:
 
                             warning(
                                 "\nNew budget is lower "
-                                "than your current spending."
+                                "than current spending."
                             )
 
                             print(
@@ -376,6 +388,7 @@ while True:
                                 "Continue? (y/n): "
                             )
 
+
                             if not confirm:
 
                                 warning(
@@ -383,6 +396,7 @@ while True:
                                 )
 
                                 continue
+
 
                         update_budget(
                             trip,
@@ -410,7 +424,8 @@ while True:
 
                 print(
                     f"Trip: "
-                    f"{trip.city}, {trip.country}"
+                    f"{trip.city}, "
+                    f"{trip.country}"
                 )
 
                 title = get_text_input(
@@ -437,6 +452,7 @@ while True:
                     - current_spent
                 )
 
+
                 if amount > remaining:
 
                     warning(
@@ -458,6 +474,7 @@ while True:
                         "Add it anyway? (y/n): "
                     )
 
+
                     if not confirm:
 
                         warning(
@@ -465,6 +482,7 @@ while True:
                         )
 
                         continue
+
 
                 expense_id = (
                     get_next_expense_id()
@@ -500,6 +518,7 @@ while True:
                     )
                 )
 
+
                 if not trip_expenses:
 
                     warning(
@@ -507,6 +526,7 @@ while True:
                     )
 
                     continue
+
 
                 display_trip_expenses(
                     expenses,
@@ -526,6 +546,7 @@ while True:
                     expense_id
                 )
 
+
                 if expense is None:
 
                     error(
@@ -534,6 +555,7 @@ while True:
                     )
 
                     continue
+
 
                 print(
                     "\nSelected Expense:"
@@ -550,6 +572,7 @@ while True:
                     "(y/n): "
                 )
 
+
                 if not confirm:
 
                     warning(
@@ -558,11 +581,13 @@ while True:
 
                     continue
 
+
                 deleted = delete_expense(
                     expenses,
                     trip.trip_id,
                     expense_id
                 )
+
 
                 if deleted:
 
@@ -583,9 +608,23 @@ while True:
 
 
             # ==================
-            # DELETE TRIP
+            # WEATHER
             # ==================
             elif trip_choice == 6:
+
+                info(
+                    "\n--- Trip Weather ---"
+                )
+
+                display_weather_for_trip(
+                    trip
+                )
+
+
+            # ==================
+            # DELETE TRIP
+            # ==================
+            elif trip_choice == 7:
 
                 display_trip_details(
                     trip,
@@ -601,6 +640,7 @@ while True:
                     "Delete this trip? (y/n): "
                 )
 
+
                 if not confirm:
 
                     warning(
@@ -609,11 +649,13 @@ while True:
 
                     continue
 
+
                 deleted = delete_trip(
                     trips,
                     expenses,
                     trip.trip_id
                 )
+
 
                 if deleted:
 
@@ -631,7 +673,7 @@ while True:
             # ==================
             # BACK
             # ==================
-            elif trip_choice == 7:
+            elif trip_choice == 8:
 
                 break
 
