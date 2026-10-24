@@ -2,7 +2,8 @@ import re
 
 from datetime import (
     datetime,
-    date
+    date,
+    timedelta
 )
 
 from tripmate.colors import (
@@ -163,6 +164,7 @@ def get_menu_choice(
 
             continue
 
+
         if (
             choice < minimum
             or
@@ -190,9 +192,11 @@ def get_yes_no(
         ).strip().lower()
 
         if answer == "y":
+
             return True
 
         if answer == "n":
+
             return False
 
         error(
@@ -210,7 +214,7 @@ def get_date(
             message
         ).strip()
 
-        # Force exactly YYYY-MM-DD
+
         if not re.fullmatch(
             r"\d{4}-\d{2}-\d{2}",
             date_input
@@ -222,6 +226,7 @@ def get_date(
             )
 
             continue
+
 
         try:
 
@@ -238,6 +243,7 @@ def get_date(
 
             continue
 
+
         if entered_date < date.today():
 
             error(
@@ -246,9 +252,11 @@ def get_date(
 
             continue
 
+
         maximum_year = (
             date.today().year + 10
         )
+
 
         if entered_date.year > maximum_year:
 
@@ -258,6 +266,7 @@ def get_date(
             )
 
             continue
+
 
         return date_input
 
@@ -286,6 +295,7 @@ def get_trip_dates():
             "%Y-%m-%d"
         ).date()
 
+
         if end < start:
 
             error(
@@ -295,35 +305,59 @@ def get_trip_dates():
 
             continue
 
+
         return (
             start_date,
             end_date
         )
 
 
+def calculate_end_date(
+    start_date: str,
+    days: int
+) -> str:
+
+    start = datetime.strptime(
+        start_date,
+        "%Y-%m-%d"
+    ).date()
+
+    end = (
+        start
+        + timedelta(
+            days=days - 1
+        )
+    )
+
+    return end.strftime(
+        "%Y-%m-%d"
+    )
+
+
 def get_expense_category():
 
-    while True:
+    print(
+        "\nChoose expense category:"
+    )
+
+
+    for index, category in enumerate(
+        EXPENSE_CATEGORIES,
+        start=1
+    ):
 
         print(
-            "\nChoose expense category:"
+            f"{index}. {category}"
         )
 
-        for index, category in enumerate(
-            EXPENSE_CATEGORIES,
-            start=1
-        ):
 
-            print(
-                f"{index}. {category}"
-            )
+    choice = get_menu_choice(
+        "Enter category number: ",
+        1,
+        len(EXPENSE_CATEGORIES)
+    )
 
-        choice = get_menu_choice(
-            "Enter category number: ",
-            1,
-            len(EXPENSE_CATEGORIES)
-        )
 
-        return EXPENSE_CATEGORIES[
-            choice - 1
-        ]
+    return EXPENSE_CATEGORIES[
+        choice - 1
+    ]

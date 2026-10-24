@@ -1,5 +1,5 @@
 {
-    "next_trip_id": 2,
+    "next_trip_id": 5,
     "trips": [
         {
             "trip_id": 1,
@@ -7,6 +7,30 @@
             "city": "dammam",
             "start_date": "2026-12-01",
             "end_date": "2026-12-03",
+            "budget": 10000.0
+        },
+        {
+            "trip_id": 2,
+            "country": "Jordan",
+            "city": "Amman",
+            "start_date": "2026-10-23",
+            "end_date": "2026-10-30",
+            "budget": 7000.0
+        },
+        {
+            "trip_id": 3,
+            "country": "Egypt",
+            "city": "Cairo",
+            "start_date": "2026-10-23",
+            "end_date": "2026-10-29",
+            "budget": 7000.0
+        },
+        {
+            "trip_id": 4,
+            "country": "Saudi Arabia",
+            "city": "Riyadh",
+            "start_date": "2026-11-18",
+            "end_date": "2026-11-29",
             "budget": 10000.0
         }
     ]
