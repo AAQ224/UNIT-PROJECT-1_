@@ -256,6 +256,107 @@ def get_date(
     default: str = None
 ) -> str:
 
+    accepted_formats = [
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%d-%m-%Y",
+        "%d/%m/%Y"
+    ]
+
+    while True:
+
+        date_input = input(
+            message
+        ).strip()
+
+
+        if (
+            not date_input
+            and
+            default is not None
+        ):
+
+            return default
+
+
+        entered_date = None
+
+
+        for date_format in accepted_formats:
+
+            try:
+
+                entered_date = datetime.strptime(
+                    date_input,
+                    date_format
+                ).date()
+
+                break
+
+            except ValueError:
+
+                continue
+
+
+        if entered_date is None:
+
+            error(
+                "Invalid date. "
+                "Examples: "
+                "2026-12-01 or 01/12/2026"
+            )
+
+            continue
+
+
+        today = date.today()
+
+
+        if (
+            entered_date < today
+            and
+            not allow_past
+        ):
+
+            error(
+                "Date cannot be in the past."
+            )
+
+            continue
+
+
+        if (
+            entered_date > today
+            and
+            not allow_future
+        ):
+
+            error(
+                "Date cannot be in the future."
+            )
+
+            continue
+
+
+        if (
+            entered_date.year
+            >
+            today.year + MAX_YEARS_AHEAD
+        ):
+
+            error(
+                f"Trip date cannot be more "
+                f"than {MAX_YEARS_AHEAD} "
+                f"years in the future."
+            )
+
+            continue
+
+
+        return entered_date.strftime(
+            DATE_FORMAT
+        )
+
     while True:
 
         date_input = input(

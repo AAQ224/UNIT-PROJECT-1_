@@ -166,8 +166,76 @@ def _at_least(
 
 def find_location(
     city: str,
-    country: str
+    country: str,
+    silent: bool = False
 ):
+
+    data = _get_json(
+        GEOCODING_URL,
+        {
+            "name": city,
+            "count": 10,
+            "language": "en",
+            "format": "json"
+        },
+        (
+            "Could not connect to "
+            "the location service."
+        )
+    )
+
+
+    if data is None:
+
+        return None
+
+
+    results = data.get(
+        "results"
+    )
+
+
+    if not results:
+
+        if not silent:
+
+            error(
+                "Location not found."
+            )
+
+        return None
+
+
+    for result in results:
+
+        if (
+            str(
+                result.get(
+                    "country",
+                    ""
+                )
+            ).lower()
+            ==
+            country.lower()
+        ):
+
+            return result
+
+
+    if not silent:
+
+        closest = results[0]
+
+        warning(
+            f"Could not verify {city} "
+            f"inside {country}. "
+            f"The closest result was "
+            f"{closest.get('name')}, "
+            f"{closest.get('country')}."
+        )
+
+
+    return None
 
     data = _get_json(
         GEOCODING_URL,
