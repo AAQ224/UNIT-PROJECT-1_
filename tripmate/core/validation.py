@@ -6,16 +6,16 @@ from datetime import (
     timedelta
 )
 
-from tripmate.colors import (
+from tripmate.core.colors import (
     error
 )
 
-from tripmate.config import (
+from tripmate.core.config import (
     EXPENSE_CATEGORIES,
     MAX_YEARS_AHEAD
 )
 
-from tripmate.utils import (
+from tripmate.core.utils import (
     DATE_FORMAT,
     parse_date
 )

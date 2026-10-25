@@ -4,21 +4,21 @@ import json
 import os
 import tempfile
 
-from tripmate.colors import (
+from tripmate.core.colors import (
     warning
 )
 
-from tripmate.config import (
+from tripmate.core.config import (
     DATA_FOLDER,
     EXPENSES_FILE,
     TRIPS_FILE
 )
 
-from tripmate.expenses import (
+from tripmate.models.expenses import (
     Expense
 )
 
-from tripmate.trip import (
+from tripmate.models.trip import (
     Trip
 )
 

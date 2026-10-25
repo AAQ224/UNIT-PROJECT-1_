@@ -3,12 +3,12 @@ from dataclasses import (
     dataclass
 )
 
-from tripmate.colors import (
+from tripmate.core.colors import (
     error,
     success
 )
 
-from tripmate.utils import (
+from tripmate.core.utils import (
     format_money,
     parse_date
 )

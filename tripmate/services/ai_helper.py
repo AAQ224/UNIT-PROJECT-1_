@@ -7,18 +7,18 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
-from tripmate.colors import (
+from tripmate.core.colors import (
     console,
     error,
     warning
 )
 
-from tripmate.config import (
+from tripmate.core.config import (
     GEMINI_API_KEY,
     MODEL_NAME
 )
 
-from tripmate.validation import (
+from tripmate.core.validation import (
     get_menu_choice
 )
 
@@ -30,10 +30,7 @@ _missing_key_reported = False
 
 def get_ai_client():
 
-    global (
-        _client,
-        _missing_key_reported
-    )
+    global _client, _missing_key_reported
 
 
     if _client is not None:

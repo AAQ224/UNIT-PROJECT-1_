@@ -5,7 +5,7 @@ from datetime import (
     datetime
 )
 
-from tripmate.config import (
+from tripmate.core.config import (
     CURRENCY
 )
 

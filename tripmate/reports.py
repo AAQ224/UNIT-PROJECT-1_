@@ -4,25 +4,25 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
-from tripmate.colors import (
+from tripmate.core.colors import (
     console,
     error,
     warning
 )
 
-from tripmate.config import (
+from tripmate.core.config import (
     BUDGET_WARNING_PERCENT,
     EXPORT_FOLDER
 )
 
-from tripmate.expenses import (
+from tripmate.models.expenses import (
     build_expenses_table,
     calculate_category_totals,
     calculate_total_expenses,
     get_trip_expenses
 )
 
-from tripmate.utils import (
+from tripmate.core.utils import (
     format_money,
     safe_percentage
 )

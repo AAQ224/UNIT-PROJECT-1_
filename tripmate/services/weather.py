@@ -5,18 +5,18 @@ import requests
 from rich.markup import escape
 from rich.panel import Panel
 
-from tripmate.colors import (
+from tripmate.core.colors import (
     console,
     error,
     warning
 )
 
-from tripmate.config import (
+from tripmate.core.config import (
     FORECAST_DAYS_LIMIT,
     REQUEST_TIMEOUT
 )
 
-from tripmate.utils import (
+from tripmate.core.utils import (
     parse_date
 )
 

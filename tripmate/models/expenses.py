@@ -6,17 +6,17 @@ from dataclasses import (
 from rich.markup import escape
 from rich.table import Table
 
-from tripmate.colors import (
+from tripmate.core.colors import (
     console,
     error,
     success
 )
 
-from tripmate.config import (
+from tripmate.core.config import (
     EXPENSE_CATEGORIES
 )
 
-from tripmate.utils import (
+from tripmate.core.utils import (
     format_money,
     today_str
 )
