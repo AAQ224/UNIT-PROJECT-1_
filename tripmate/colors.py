@@ -1,18 +1,31 @@
-from colorama import Fore, init
+"""Shared Rich console and colored messages."""
+
+from rich.console import Console
 
 
-init(
-    autoreset=True
-)
+console = Console()
+
+
+def _print(
+    message: str,
+    style: str
+):
+
+    console.print(
+        message,
+        style=style,
+        markup=False,
+        highlight=False
+    )
 
 
 def success(
     message: str
 ):
 
-    print(
-        Fore.GREEN
-        + message
+    _print(
+        message,
+        "green"
     )
 
 
@@ -20,9 +33,9 @@ def warning(
     message: str
 ):
 
-    print(
-        Fore.YELLOW
-        + message
+    _print(
+        message,
+        "yellow"
     )
 
 
@@ -30,9 +43,9 @@ def error(
     message: str
 ):
 
-    print(
-        Fore.RED
-        + message
+    _print(
+        message,
+        "red"
     )
 
 
@@ -40,9 +53,9 @@ def info(
     message: str
 ):
 
-    print(
-        Fore.CYAN
-        + message
+    _print(
+        message,
+        "cyan"
     )
 
 
@@ -50,7 +63,7 @@ def ai(
     message: str
 ):
 
-    print(
-        Fore.BLUE
-        + message
+    _print(
+        message,
+        "blue"
     )

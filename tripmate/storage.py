@@ -1,455 +1,478 @@
+"""Reading and writing TripMate JSON data."""
+
 import json
 import os
+import tempfile
 
-from tripmate.trip import Trip
-
-
-DATA_FOLDER = "data"
-
-TRIPS_FILE = os.path.join(
-    DATA_FOLDER,
-    "trips.json"
+from tripmate.colors import (
+    warning
 )
 
-EXPENSES_FILE = os.path.join(
+from tripmate.config import (
     DATA_FOLDER,
-    "expenses.json"
+    EXPENSES_FILE,
+    TRIPS_FILE
 )
+
+from tripmate.expenses import (
+    Expense
+)
+
+from tripmate.trip import (
+    Trip
+)
+
+
+TRIPS_SPEC = {
+    "path": TRIPS_FILE,
+    "items": "trips",
+    "counter": "next_trip_id",
+    "id": "trip_id",
+}
+
+
+EXPENSES_SPEC = {
+    "path": EXPENSES_FILE,
+    "items": "expenses",
+    "counter": "next_expense_id",
+    "id": "expense_id",
+}
+
+
+def _max_id(
+    items: list,
+    id_key: str
+) -> int:
+
+    ids = []
+
+
+    for item in items:
+
+        try:
+
+            ids.append(
+                int(
+                    item[id_key]
+                )
+            )
+
+        except (
+            KeyError,
+            TypeError,
+            ValueError
+        ):
+
+            continue
+
+
+    return max(
+        ids,
+        default=0
+    )
+
+
+def _write_json(
+    path,
+    data
+):
+
+    DATA_FOLDER.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+
+    file_descriptor, temp_path = (
+        tempfile.mkstemp(
+            dir=DATA_FOLDER,
+            suffix=".tmp"
+        )
+    )
+
+
+    try:
+
+        with os.fdopen(
+            file_descriptor,
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            json.dump(
+                data,
+                file,
+                indent=4,
+                ensure_ascii=False
+            )
+
+
+        os.replace(
+            temp_path,
+            path
+        )
+
+
+    except BaseException:
+
+        if os.path.exists(
+            temp_path
+        ):
+
+            os.remove(
+                temp_path
+            )
+
+        raise
+
+
+def _read_json(
+    path
+):
+
+    try:
+
+        with open(
+            path,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            return json.load(
+                file
+            )
+
+
+    except json.JSONDecodeError:
+
+        backup = path.with_suffix(
+            ".corrupted.json"
+        )
+
+
+        os.replace(
+            path,
+            backup
+        )
+
+
+        warning(
+            f"{path.name} was damaged. "
+            f"A copy was saved as "
+            f"{backup.name}."
+        )
+
+
+        return None
 
 
 def initialize_storage():
 
-    if not os.path.exists(DATA_FOLDER):
-        os.mkdir(DATA_FOLDER)
+    DATA_FOLDER.mkdir(
+        parents=True,
+        exist_ok=True
+    )
 
-    if not os.path.exists(TRIPS_FILE):
 
-        with open(
-            TRIPS_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
+    for spec in (
+        TRIPS_SPEC,
+        EXPENSES_SPEC
+    ):
 
-            json.dump(
+        if not spec[
+            "path"
+        ].exists():
+
+            _write_json(
+                spec["path"],
                 {
-                    "next_trip_id": 1,
-                    "trips": []
-                },
-                file,
-                indent=4
-            )
-
-    if not os.path.exists(EXPENSES_FILE):
-
-        with open(
-            EXPENSES_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-            json.dump(
-                {
-                    "next_expense_id": 1,
-                    "expenses": []
-                },
-                file,
-                indent=4
+                    spec["counter"]: 1,
+                    spec["items"]: []
+                }
             )
 
 
-def load_trips():
+def _load_collection(
+    spec: dict
+) -> dict:
 
     initialize_storage()
 
-    with open(
-        TRIPS_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
 
-        data = json.load(file)
+    data = _read_json(
+        spec["path"]
+    )
 
-    # Support old list format
-    if isinstance(data, list):
 
-        old_trips = data
-
-        highest_id = 0
-
-        for trip in old_trips:
-
-            if trip["trip_id"] > highest_id:
-                highest_id = trip["trip_id"]
+    # Support old JSON list format.
+    if isinstance(
+        data,
+        list
+    ):
 
         data = {
-            "next_trip_id": highest_id + 1,
-            "trips": old_trips
+            spec["items"]: data
         }
 
-        with open(
-            TRIPS_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
 
-            json.dump(
-                data,
-                file,
-                indent=4
-            )
+    if not isinstance(
+        data,
+        dict
+    ):
+
+        data = {}
+
+
+    items = data.get(
+        spec["items"],
+        []
+    )
+
+
+    if not isinstance(
+        items,
+        list
+    ):
+
+        items = []
+
+
+    counter = data.get(
+        spec["counter"],
+        1
+    )
+
+
+    if (
+        not isinstance(
+            counter,
+            int
+        )
+        or
+        counter < 1
+    ):
+
+        counter = 1
+
+
+    counter = max(
+        counter,
+        _max_id(
+            items,
+            spec["id"]
+        ) + 1
+    )
+
+
+    return {
+        spec["counter"]: counter,
+        spec["items"]: items
+    }
+
+
+def _save_collection(
+    spec: dict,
+    items: list
+):
+
+    initialize_storage()
+
+
+    if items:
+
+        counter = max(
+            _load_collection(
+                spec
+            )[
+                spec["counter"]
+            ],
+            _max_id(
+                items,
+                spec["id"]
+            ) + 1
+        )
+
+
+    else:
+
+        counter = 1
+
+
+    _write_json(
+        spec["path"],
+        {
+            spec["counter"]: counter,
+            spec["items"]: items
+        }
+    )
+
+
+def _reserve_next_id(
+    spec: dict,
+    current_items: list
+) -> int:
+
+    data = _load_collection(
+        spec
+    )
+
+
+    next_id = max(
+        data[
+            spec["counter"]
+        ],
+        _max_id(
+            current_items,
+            spec["id"]
+        ) + 1
+    )
+
+
+    data[
+        spec["counter"]
+    ] = next_id + 1
+
+
+    _write_json(
+        spec["path"],
+        data
+    )
+
+
+    return next_id
+
+
+def load_trips() -> list:
 
     trips = []
 
-    for trip_data in data["trips"]:
 
-        trip = Trip(
-            trip_data["trip_id"],
-            trip_data["country"],
-            trip_data["city"],
-            trip_data["start_date"],
-            trip_data["end_date"],
-            trip_data["budget"]
-        )
+    for trip_data in _load_collection(
+        TRIPS_SPEC
+    )[
+        "trips"
+    ]:
 
-        trips.append(trip)
+        try:
+
+            trips.append(
+                Trip.from_dict(
+                    trip_data
+                )
+            )
+
+
+        except (
+            KeyError,
+            TypeError,
+            ValueError
+        ):
+
+            warning(
+                "A damaged trip record "
+                "was skipped."
+            )
+
 
     return trips
 
 
-def save_trips(trips: list):
+def save_trips(
+    trips: list
+):
 
-    initialize_storage()
+    _save_collection(
+        TRIPS_SPEC,
+        [
+            trip.to_dict()
+            for trip in trips
+        ]
+    )
 
-    # If there are no trips,
-    # reset the next ID to 1
-    if not trips:
 
-        data = {
-            "next_trip_id": 1,
-            "trips": []
-        }
+def get_next_trip_id(
+    trips: list = None
+) -> int:
 
-        with open(
-            TRIPS_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
+    current = (
+        [
+            trip.to_dict()
+            for trip in trips
+        ]
+        if trips
+        else []
+    )
 
-            json.dump(
-                data,
-                file,
-                indent=4
+
+    return _reserve_next_id(
+        TRIPS_SPEC,
+        current
+    )
+
+
+def load_expenses() -> list:
+
+    expenses = []
+
+
+    for expense_data in _load_collection(
+        EXPENSES_SPEC
+    )[
+        "expenses"
+    ]:
+
+        try:
+
+            expenses.append(
+                Expense.from_dict(
+                    expense_data
+                )
             )
 
-        return
 
-    with open(
-        TRIPS_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
+        except (
+            KeyError,
+            TypeError,
+            ValueError
+        ):
 
-        current_data = json.load(file)
-
-    if isinstance(current_data, list):
-
-        highest_id = 0
-
-        for trip in current_data:
-
-            if trip["trip_id"] > highest_id:
-                highest_id = trip["trip_id"]
-
-        next_trip_id = highest_id + 1
-
-    else:
-
-        next_trip_id = current_data[
-            "next_trip_id"
-        ]
-
-    trips_data = []
-
-    for trip in trips:
-
-        trips_data.append(
-            {
-                "trip_id": trip.trip_id,
-                "country": trip.country,
-                "city": trip.city,
-                "start_date": trip.start_date,
-                "end_date": trip.end_date,
-                "budget": trip.budget
-            }
-        )
-
-    data = {
-        "next_trip_id": next_trip_id,
-        "trips": trips_data
-    }
-
-    with open(
-        TRIPS_FILE,
-        "w",
-        encoding="utf-8"
-    ) as file:
-
-        json.dump(
-            data,
-            file,
-            indent=4
-        )
-
-
-def get_next_trip_id():
-
-    initialize_storage()
-
-    with open(
-        TRIPS_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
-
-        data = json.load(file)
-
-    if isinstance(data, list):
-
-        highest_id = 0
-
-        for trip in data:
-
-            if trip["trip_id"] > highest_id:
-                highest_id = trip["trip_id"]
-
-        data = {
-            "next_trip_id": highest_id + 1,
-            "trips": data
-        }
-
-    # If there are no trips,
-    # start again from 1
-    if not data["trips"]:
-
-        trip_id = 1
-
-        data["next_trip_id"] = 2
-
-    else:
-
-        trip_id = data[
-            "next_trip_id"
-        ]
-
-        data[
-            "next_trip_id"
-        ] += 1
-
-    with open(
-        TRIPS_FILE,
-        "w",
-        encoding="utf-8"
-    ) as file:
-
-        json.dump(
-            data,
-            file,
-            indent=4
-        )
-
-    return trip_id
-
-
-def load_expenses():
-
-    initialize_storage()
-
-    with open(
-        EXPENSES_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
-
-        data = json.load(file)
-
-    # Support old list format
-    if isinstance(data, list):
-
-        old_expenses = data
-
-        highest_id = 0
-
-        for expense in old_expenses:
-
-            if (
-                expense["expense_id"]
-                > highest_id
-            ):
-
-                highest_id = (
-                    expense["expense_id"]
-                )
-
-        data = {
-            "next_expense_id": highest_id + 1,
-            "expenses": old_expenses
-        }
-
-        with open(
-            EXPENSES_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-            json.dump(
-                data,
-                file,
-                indent=4
+            warning(
+                "A damaged expense record "
+                "was skipped."
             )
 
-    return data["expenses"]
+
+    return expenses
 
 
-def save_expenses(expenses: list):
+def save_expenses(
+    expenses: list
+):
 
-    initialize_storage()
-
-    # If there are no expenses,
-    # reset the next ID to 1
-    if not expenses:
-
-        data = {
-            "next_expense_id": 1,
-            "expenses": []
-        }
-
-        with open(
-            EXPENSES_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-            json.dump(
-                data,
-                file,
-                indent=4
-            )
-
-        return
-
-    with open(
-        EXPENSES_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
-
-        current_data = json.load(file)
-
-    if isinstance(current_data, list):
-
-        highest_id = 0
-
-        for expense in current_data:
-
-            if (
-                expense["expense_id"]
-                > highest_id
-            ):
-
-                highest_id = (
-                    expense["expense_id"]
-                )
-
-        next_expense_id = (
-            highest_id + 1
-        )
-
-    else:
-
-        next_expense_id = (
-            current_data[
-                "next_expense_id"
-            ]
-        )
-
-    data = {
-        "next_expense_id": next_expense_id,
-        "expenses": expenses
-    }
-
-    with open(
-        EXPENSES_FILE,
-        "w",
-        encoding="utf-8"
-    ) as file:
-
-        json.dump(
-            data,
-            file,
-            indent=4
-        )
-
-
-def get_next_expense_id():
-
-    initialize_storage()
-
-    with open(
-        EXPENSES_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
-
-        data = json.load(file)
-
-    if isinstance(data, list):
-
-        highest_id = 0
-
-        for expense in data:
-
-            if (
-                expense["expense_id"]
-                > highest_id
-            ):
-
-                highest_id = (
-                    expense["expense_id"]
-                )
-
-        data = {
-            "next_expense_id": highest_id + 1,
-            "expenses": data
-        }
-
-    # If there are no expenses,
-    # start again from 1
-    if not data["expenses"]:
-
-        expense_id = 1
-
-        data["next_expense_id"] = 2
-
-    else:
-
-        expense_id = data[
-            "next_expense_id"
+    _save_collection(
+        EXPENSES_SPEC,
+        [
+            expense.to_dict()
+            for expense in expenses
         ]
+    )
 
-        data[
-            "next_expense_id"
-        ] += 1
 
-    with open(
-        EXPENSES_FILE,
-        "w",
-        encoding="utf-8"
-    ) as file:
+def get_next_expense_id(
+    expenses: list = None
+) -> int:
 
-        json.dump(
-            data,
-            file,
-            indent=4
-        )
+    current = (
+        [
+            expense.to_dict()
+            for expense in expenses
+        ]
+        if expenses
+        else []
+    )
 
-    return expense_id
+
+    return _reserve_next_id(
+        EXPENSES_SPEC,
+        current
+    )

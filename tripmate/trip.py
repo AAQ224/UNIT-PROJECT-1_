@@ -1,35 +1,100 @@
+from dataclasses import (
+    asdict,
+    dataclass
+)
+
 from tripmate.colors import (
-    success,
-    error
+    error,
+    success
+)
+
+from tripmate.utils import (
+    format_money,
+    parse_date
 )
 
 
+@dataclass
 class Trip:
 
-    def __init__(
-        self,
-        trip_id: int,
-        country: str,
-        city: str,
-        start_date: str,
-        end_date: str,
-        budget: float
-    ):
-        self.trip_id = trip_id
-        self.country = country
-        self.city = city
-        self.start_date = start_date
-        self.end_date = end_date
-        self.budget = budget
+    trip_id: int
+    country: str
+    city: str
+    start_date: str
+    end_date: str
+    budget: float
 
 
-    def display_info(self):
+    @property
+    def days(self) -> int:
+
+        try:
+
+            delta = (
+                parse_date(
+                    self.end_date
+                )
+                -
+                parse_date(
+                    self.start_date
+                )
+            )
+
+        except ValueError:
+
+            return 1
+
+        return max(
+            delta.days + 1,
+            1
+        )
+
+
+    def display_info(self) -> str:
+
         return (
             f"Trip ID: {self.trip_id}\n"
-            f"Destination: {self.city}, {self.country}\n"
+            f"Destination: "
+            f"{self.city}, {self.country}\n"
             f"Start Date: {self.start_date}\n"
             f"End Date: {self.end_date}\n"
-            f"Budget: {self.budget:,.2f} SAR"
+            f"Budget: "
+            f"{format_money(self.budget)}"
+        )
+
+
+    def to_dict(self) -> dict:
+
+        return asdict(
+            self
+        )
+
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: dict
+    ):
+
+        return cls(
+            trip_id=int(
+                data["trip_id"]
+            ),
+            country=str(
+                data["country"]
+            ),
+            city=str(
+                data["city"]
+            ),
+            start_date=str(
+                data["start_date"]
+            ),
+            end_date=str(
+                data["end_date"]
+            ),
+            budget=float(
+                data["budget"]
+            )
         )
 
 
@@ -52,10 +117,19 @@ def create_trip(
         budget
     )
 
-    trips.append(trip)
+    trips.append(
+        trip
+    )
 
-    success("\nTrip created successfully.")
-    success(f"Trip ID: {trip_id}")
+    success(
+        "\nTrip created successfully."
+    )
+
+    success(
+        f"Trip ID: {trip_id}"
+    )
+
+    return trip
 
 
 def search_trip(
@@ -66,6 +140,7 @@ def search_trip(
     for trip in trips:
 
         if trip.trip_id == trip_id:
+
             return trip
 
     return None
@@ -125,12 +200,13 @@ def delete_trip(
     trips: list,
     expenses: list,
     trip_id: int
-):
+) -> bool:
 
     trip = search_trip(
         trips,
         trip_id
     )
+
 
     if trip is None:
 
@@ -140,15 +216,18 @@ def delete_trip(
 
         return False
 
-    # Delete every expense linked
-    # to this trip.
+
     expenses[:] = [
         expense
         for expense in expenses
-        if expense["trip_id"] != trip_id
+        if expense.trip_id != trip_id
     ]
 
-    trips.remove(trip)
+
+    trips.remove(
+        trip
+    )
+
 
     success(
         "Trip and all related expenses "

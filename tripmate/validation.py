@@ -1,7 +1,7 @@
+import math
 import re
 
 from datetime import (
-    datetime,
     date,
     timedelta
 )
@@ -10,13 +10,20 @@ from tripmate.colors import (
     error
 )
 
-from tripmate.expenses import (
-    EXPENSE_CATEGORIES
+from tripmate.config import (
+    EXPENSE_CATEGORIES,
+    MAX_YEARS_AHEAD
+)
+
+from tripmate.utils import (
+    DATE_FORMAT,
+    parse_date
 )
 
 
 def get_text_input(
-    message: str
+    message: str,
+    min_length: int = 2
 ) -> str:
 
     while True:
@@ -24,6 +31,7 @@ def get_text_input(
         value = input(
             message
         ).strip()
+
 
         if not value:
 
@@ -33,7 +41,10 @@ def get_text_input(
 
             continue
 
-        if len(value) < 2:
+
+        if len(
+            value
+        ) < min_length:
 
             error(
                 "Input is too short."
@@ -41,16 +52,91 @@ def get_text_input(
 
             continue
 
+
         if not any(
             character.isalpha()
             for character in value
         ):
 
             error(
-                "Please enter a valid text value."
+                "Please enter a valid "
+                "text value."
             )
 
             continue
+
+
+        return value
+
+
+def _get_number(
+    message: str,
+    cast,
+    allow_zero: bool
+):
+
+    while True:
+
+        raw = input(
+            message
+        ).strip().replace(
+            ",",
+            ""
+        )
+
+
+        try:
+
+            value = cast(
+                raw
+            )
+
+
+        except ValueError:
+
+            error(
+                "Please enter a valid number."
+            )
+
+            continue
+
+
+        if not math.isfinite(
+            value
+        ):
+
+            error(
+                "Please enter a valid number."
+            )
+
+            continue
+
+
+        if (
+            allow_zero
+            and
+            value < 0
+        ):
+
+            error(
+                "Value cannot be negative."
+            )
+
+            continue
+
+
+        if (
+            not allow_zero
+            and
+            value <= 0
+        ):
+
+            error(
+                "Value must be greater than 0."
+            )
+
+            continue
+
 
         return value
 
@@ -59,87 +145,33 @@ def get_positive_float(
     message: str
 ) -> float:
 
-    while True:
-
-        try:
-
-            value = float(
-                input(message)
-            )
-
-            if value <= 0:
-
-                error(
-                    "Value must be greater than 0."
-                )
-
-                continue
-
-            return value
-
-        except ValueError:
-
-            error(
-                "Please enter a valid number."
-            )
+    return _get_number(
+        message,
+        float,
+        allow_zero=False
+    )
 
 
 def get_positive_int(
     message: str
 ) -> int:
 
-    while True:
-
-        try:
-
-            value = int(
-                input(message)
-            )
-
-            if value <= 0:
-
-                error(
-                    "Value must be greater than 0."
-                )
-
-                continue
-
-            return value
-
-        except ValueError:
-
-            error(
-                "Please enter a valid number."
-            )
+    return _get_number(
+        message,
+        int,
+        allow_zero=False
+    )
 
 
 def get_non_negative_int(
     message: str
 ) -> int:
 
-    while True:
-
-        try:
-
-            value = int(
-                input(message)
-            )
-
-            if value < 0:
-
-                error(
-                    "Value cannot be negative."
-                )
-
-                continue
-
-            return value
-
-        except ValueError:
-
-            error(
-                "Please enter a valid number."
-            )
+    return _get_number(
+        message,
+        int,
+        allow_zero=True
+    )
 
 
 def get_menu_choice(
@@ -153,8 +185,11 @@ def get_menu_choice(
         try:
 
             choice = int(
-                input(message)
+                input(
+                    message
+                ).strip()
             )
+
 
         except ValueError:
 
@@ -178,6 +213,7 @@ def get_menu_choice(
 
             continue
 
+
         return choice
 
 
@@ -191,13 +227,22 @@ def get_yes_no(
             message
         ).strip().lower()
 
-        if answer == "y":
+
+        if answer in (
+            "y",
+            "yes"
+        ):
 
             return True
 
-        if answer == "n":
+
+        if answer in (
+            "n",
+            "no"
+        ):
 
             return False
+
 
         error(
             "Please enter y or n."
@@ -205,7 +250,10 @@ def get_yes_no(
 
 
 def get_date(
-    message: str
+    message: str,
+    allow_past: bool = False,
+    allow_future: bool = True,
+    default: str = None
 ) -> str:
 
     while True:
@@ -213,6 +261,15 @@ def get_date(
         date_input = input(
             message
         ).strip()
+
+
+        if (
+            not date_input
+            and
+            default is not None
+        ):
+
+            return default
 
 
         if not re.fullmatch(
@@ -230,10 +287,10 @@ def get_date(
 
         try:
 
-            entered_date = datetime.strptime(
-                date_input,
-                "%Y-%m-%d"
-            ).date()
+            entered_date = parse_date(
+                date_input
+            )
+
 
         except ValueError:
 
@@ -244,7 +301,14 @@ def get_date(
             continue
 
 
-        if entered_date < date.today():
+        today = date.today()
+
+
+        if (
+            entered_date < today
+            and
+            not allow_past
+        ):
 
             error(
                 "Date cannot be in the past."
@@ -253,16 +317,29 @@ def get_date(
             continue
 
 
-        maximum_year = (
-            date.today().year + 10
-        )
-
-
-        if entered_date.year > maximum_year:
+        if (
+            entered_date > today
+            and
+            not allow_future
+        ):
 
             error(
-                "Trip date cannot be more "
-                "than 10 years in the future."
+                "Date cannot be in the future."
+            )
+
+            continue
+
+
+        if (
+            entered_date.year
+            >
+            today.year + MAX_YEARS_AHEAD
+        ):
+
+            error(
+                f"Trip date cannot be more "
+                f"than {MAX_YEARS_AHEAD} "
+                f"years in the future."
             )
 
             continue
@@ -273,30 +350,28 @@ def get_date(
 
 def get_trip_dates():
 
-    while True:
+    start_date = get_date(
+        "Enter start date "
+        "(YYYY-MM-DD): "
+    )
 
-        start_date = get_date(
-            "Enter start date "
-            "(YYYY-MM-DD): "
-        )
+
+    start = parse_date(
+        start_date
+    )
+
+
+    while True:
 
         end_date = get_date(
             "Enter end date "
             "(YYYY-MM-DD): "
         )
 
-        start = datetime.strptime(
-            start_date,
-            "%Y-%m-%d"
-        ).date()
 
-        end = datetime.strptime(
-            end_date,
-            "%Y-%m-%d"
-        ).date()
-
-
-        if end < start:
+        if parse_date(
+            end_date
+        ) < start:
 
             error(
                 "End date cannot be "
@@ -317,24 +392,23 @@ def calculate_end_date(
     days: int
 ) -> str:
 
-    start = datetime.strptime(
-        start_date,
-        "%Y-%m-%d"
-    ).date()
-
     end = (
-        start
-        + timedelta(
+        parse_date(
+            start_date
+        )
+        +
+        timedelta(
             days=days - 1
         )
     )
 
+
     return end.strftime(
-        "%Y-%m-%d"
+        DATE_FORMAT
     )
 
 
-def get_expense_category():
+def get_expense_category() -> str:
 
     print(
         "\nChoose expense category:"
@@ -354,7 +428,9 @@ def get_expense_category():
     choice = get_menu_choice(
         "Enter category number: ",
         1,
-        len(EXPENSE_CATEGORIES)
+        len(
+            EXPENSE_CATEGORIES
+        )
     )
 
 

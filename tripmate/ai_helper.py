@@ -1,46 +1,69 @@
-import os
 import json
+import re
 
-from dotenv import load_dotenv
 from google import genai
 
-from rich.console import Console
-from rich.table import Table
+from rich.markup import escape
 from rich.panel import Panel
+from rich.table import Table
 
 from tripmate.colors import (
+    console,
     error,
     warning
 )
 
-
-console = Console()
-
-load_dotenv()
-
-
-API_KEY = os.getenv(
-    "GEMINI_API_KEY"
+from tripmate.config import (
+    GEMINI_API_KEY,
+    MODEL_NAME
 )
 
-MODEL_NAME = (
-    "gemini-3.5-flash-lite"
+from tripmate.validation import (
+    get_menu_choice
 )
+
+
+_client = None
+
+_missing_key_reported = False
 
 
 def get_ai_client():
 
-    if not API_KEY:
+    global (
+        _client,
+        _missing_key_reported
+    )
 
-        error(
-            "Gemini API key was not found."
-        )
+
+    if _client is not None:
+
+        return _client
+
+
+    if not GEMINI_API_KEY:
+
+        if not _missing_key_reported:
+
+            warning(
+                "Gemini API key was not found. "
+                "Add GEMINI_API_KEY to your "
+                ".env file to enable AI features."
+            )
+
+
+            _missing_key_reported = True
+
 
         return None
 
-    return genai.Client(
-        api_key=API_KEY
+
+    _client = genai.Client(
+        api_key=GEMINI_API_KEY
     )
+
+
+    return _client
 
 
 def clean_json_response(
@@ -49,58 +72,46 @@ def clean_json_response(
 
     text = text.strip()
 
-    if text.startswith("```json"):
-        text = text[7:]
 
-    elif text.startswith("```"):
-        text = text[3:]
-
-    if text.endswith("```"):
-        text = text[:-3]
-
-    return text.strip()
+    match = re.search(
+        r"```(?:json)?\s*(.*?)```",
+        text,
+        re.DOTALL
+    )
 
 
-def correct_location_name(
-    city: str,
-    country: str
+    if match:
+
+        return match.group(
+            1
+        ).strip()
+
+
+    return text
+
+
+def _clean_input(
+    value
+) -> str:
+
+    return " ".join(
+        str(
+            value
+        ).split()
+    )[:100]
+
+
+def _ask_gemini_json(
+    prompt: str,
+    report=error
 ):
 
     client = get_ai_client()
 
+
     if client is None:
 
-        return {
-            "city": city,
-            "country": country
-        }
-
-
-    prompt = f"""
-Correct the spelling and formatting of this
-travel destination.
-
-City:
-{city}
-
-Country:
-{country}
-
-Return ONLY valid JSON.
-
-Example:
-{{
-    "city": "Dammam",
-    "country": "Saudi Arabia"
-}}
-
-Rules:
-- Correct spelling mistakes.
-- Use the official common English names.
-- Do not change the intended location.
-- Do not explain anything.
-- Return JSON only.
-"""
+        return None
 
 
     try:
@@ -108,53 +119,191 @@ Rules:
         response = (
             client.models.generate_content(
                 model=MODEL_NAME,
-                contents=prompt
+                contents=prompt,
+                config={
+                    "response_mime_type":
+                    "application/json"
+                }
             )
         )
 
-        if not response.text:
 
-            return {
-                "city": city,
-                "country": country
-            }
+    except Exception:
 
-        cleaned_response = (
+        report(
+            "Could not reach Gemini "
+            "right now. Check your "
+            "internet connection and "
+            "try again."
+        )
+
+        return None
+
+
+    if not response.text:
+
+        report(
+            "Gemini returned an "
+            "empty response."
+        )
+
+        return None
+
+
+    try:
+
+        return json.loads(
             clean_json_response(
                 response.text
             )
         )
 
-        result = json.loads(
-            cleaned_response
+
+    except json.JSONDecodeError:
+
+        report(
+            "Gemini returned an "
+            "invalid response format."
         )
 
-        corrected_city = result.get(
-            "city",
-            city
+        return None
+
+
+def correct_location_name(
+    city: str,
+    country: str
+) -> dict:
+
+    original = {
+        "city": city,
+        "country": country
+    }
+
+
+    prompt = f"""
+Correct the spelling and formatting of this travel destination.
+
+City: {_clean_input(city)}
+Country: {_clean_input(country)}
+
+Return ONLY valid JSON in this format:
+
+{{
+    "city": "Dammam",
+    "country": "Saudi Arabia"
+}}
+
+Rules:
+- Correct spelling mistakes.
+- Use common official English place names.
+- Do not change the intended location.
+- Do not explain anything.
+"""
+
+
+    result = _ask_gemini_json(
+        prompt,
+        report=warning
+    )
+
+
+    if not isinstance(
+        result,
+        dict
+    ):
+
+        return original
+
+
+    corrected_city = result.get(
+        "city"
+    )
+
+    corrected_country = result.get(
+        "country"
+    )
+
+
+    if (
+        not isinstance(
+            corrected_city,
+            str
         )
+        or
+        not corrected_city.strip()
+    ):
 
-        corrected_country = result.get(
-            "country",
-            country
+        corrected_city = city
+
+
+    if (
+        not isinstance(
+            corrected_country,
+            str
         )
+        or
+        not corrected_country.strip()
+    ):
 
-        return {
-            "city": corrected_city,
-            "country": corrected_country
-        }
+        corrected_country = country
 
-    except Exception:
 
-        warning(
-            "AI location correction "
-            "is currently unavailable."
+    return {
+        "city": corrected_city.strip(),
+        "country": corrected_country.strip()
+    }
+
+
+def _valid_recommendation(
+    item
+) -> bool:
+
+    if not isinstance(
+        item,
+        dict
+    ):
+
+        return False
+
+
+    city = item.get(
+        "city"
+    )
+
+    country = item.get(
+        "country"
+    )
+
+    activities = item.get(
+        "activities",
+        []
+    )
+
+
+    return (
+        isinstance(
+            city,
+            str
         )
-
-        return {
-            "city": city,
-            "country": country
-        }
+        and
+        bool(
+            city.strip()
+        )
+        and
+        isinstance(
+            country,
+            str
+        )
+        and
+        bool(
+            country.strip()
+        )
+        and
+        isinstance(
+            activities,
+            list
+        )
+    )
 
 
 def get_travel_recommendations(
@@ -167,14 +316,7 @@ def get_travel_recommendations(
     weather_preference: str,
     activity_preference: str,
     travel_style: str
-):
-
-    client = get_ai_client()
-
-    if client is None:
-
-        return []
-
+) -> list:
 
     prompt = f"""
 You are a travel recommendation assistant
@@ -183,7 +325,7 @@ inside a Python CLI application called TripMate.
 Traveler information:
 
 Departure location:
-{departure_city}, {departure_country}
+{_clean_input(departure_city)}, {_clean_input(departure_country)}
 
 Total trip budget:
 {budget} SAR
@@ -195,45 +337,30 @@ Travel dates:
 {start_date} to {end_date}
 
 Preferred weather:
-{weather_preference}
+{_clean_input(weather_preference)}
 
 Preferred activities:
-{activity_preference}
+{_clean_input(activity_preference)}
 
 Travel style:
-{travel_style}
+{_clean_input(travel_style)}
 
-Recommend exactly 3 realistic international
-travel destinations.
+Recommend exactly 3 realistic international travel destinations.
 
 Important:
-- Consider the departure location.
-- Consider the travel dates and season.
-- Consider the total budget in Saudi Riyals.
-- The budget should reasonably include flights,
-  accommodation, food, transport and activities.
-- Consider the preferred weather.
-- Avoid destinations that are clearly unrealistic
-  for the provided budget.
+- Consider the departure location, season, duration and total budget.
+- Treat budget suitability as an estimate based on general travel costs.
+- Do NOT claim to have live airfare, hotel prices, or booking availability.
+- Avoid destinations that are clearly unrealistic for the budget.
 
-For each destination return:
-
-- city
-- country
-- short reason
-- budget suitability
-- three suggested activities
-
-Return ONLY valid JSON.
-
-Use exactly this structure:
+Return ONLY valid JSON using this structure:
 
 [
     {{
         "city": "City Name",
         "country": "Country Name",
         "reason": "Short reason",
-        "budget_suitability": "Short explanation",
+        "budget_suitability": "Short estimated budget explanation",
         "activities": [
             "Activity 1",
             "Activity 2",
@@ -241,62 +368,17 @@ Use exactly this structure:
         ]
     }}
 ]
-
-Do not include markdown.
-Do not include extra text.
 """
 
 
-    try:
-
-        response = (
-            client.models.generate_content(
-                model=MODEL_NAME,
-                contents=prompt
-            )
+    recommendations = (
+        _ask_gemini_json(
+            prompt
         )
-
-    except Exception as exception:
-
-        error(
-            "\nCould not connect to Gemini."
-        )
-
-        print(
-            exception
-        )
-
-        return []
+    )
 
 
-    if not response.text:
-
-        error(
-            "Gemini returned "
-            "an empty response."
-        )
-
-        return []
-
-
-    try:
-
-        cleaned_response = (
-            clean_json_response(
-                response.text
-            )
-        )
-
-        recommendations = json.loads(
-            cleaned_response
-        )
-
-    except json.JSONDecodeError:
-
-        error(
-            "Gemini returned "
-            "an invalid response format."
-        )
+    if recommendations is None:
 
         return []
 
@@ -313,16 +395,26 @@ Do not include extra text.
         return []
 
 
-    if not recommendations:
+    valid = [
+        item
+        for item in recommendations
+        if _valid_recommendation(
+            item
+        )
+    ][:3]
+
+
+    if not valid:
 
         warning(
-            "No destinations were recommended."
+            "No valid destinations "
+            "were recommended."
         )
 
         return []
 
 
-    return recommendations
+    return valid
 
 
 def display_ai_recommendations(
@@ -336,8 +428,9 @@ def display_ai_recommendations(
 
     table = Table(
         title="AI Travel Recommendations",
-        header_style="bold cyan"
+        header_style="bold blue"
     )
+
 
     table.add_column(
         "#",
@@ -378,16 +471,33 @@ def display_ai_recommendations(
 
 
         table.add_row(
-            str(index),
-            f"{city}, {country}",
-            reason
+            str(
+                index
+            ),
+            escape(
+                f"{city}, {country}"
+            ),
+            escape(
+                str(
+                    reason
+                )
+            )
         )
 
 
     console.print()
 
+
     console.print(
         table
+    )
+
+
+    console.print(
+        "[dim]"
+        "Budget suitability is an AI estimate, "
+        "not a live flight or hotel quote."
+        "[/dim]"
     )
 
 
@@ -421,13 +531,10 @@ def display_selected_recommendation(
     )
 
 
-    activities_text = ""
-
-    for activity in activities:
-
-        activities_text += (
-            f"• {activity}\n"
-        )
+    activities_text = "\n".join(
+        f"• {escape(str(activity))}"
+        for activity in activities
+    )
 
 
     if not activities_text:
@@ -439,26 +546,27 @@ def display_selected_recommendation(
 
     content = (
         f"[bold]Destination:[/bold] "
-        f"{city}, {country}\n\n"
+        f"{escape(f'{city}, {country}')}\n\n"
 
         f"[bold]Why it fits:[/bold]\n"
-        f"{reason}\n\n"
+        f"{escape(str(reason))}\n\n"
 
-        f"[bold]Budget:[/bold]\n"
-        f"{budget}\n\n"
+        f"[bold]Estimated budget fit:[/bold]\n"
+        f"{escape(str(budget))}\n\n"
 
         f"[bold]Suggested Activities:[/bold]\n"
-        f"{activities_text.rstrip()}"
+        f"{activities_text}"
     )
 
 
     console.print()
 
+
     console.print(
         Panel(
             content,
-            title="Selected Recommendation",
-            border_style="cyan"
+            title="Selected AI Recommendation",
+            border_style="blue"
         )
     )
 
@@ -472,44 +580,21 @@ def select_ai_destination(
         return None
 
 
-    while True:
-
-        try:
-
-            choice = int(
-                input(
-                    "\nChoose a destination "
-                    "number or enter 0 to cancel: "
-                )
-            )
-
-        except ValueError:
-
-            error(
-                "Please enter a number only."
-            )
-
-            continue
+    choice = get_menu_choice(
+        "\nChoose a destination number "
+        "or enter 0 to cancel: ",
+        0,
+        len(
+            recommendations
+        )
+    )
 
 
-        if choice == 0:
+    if choice == 0:
 
-            return None
-
-
-        if (
-            choice < 1
-            or
-            choice > len(recommendations)
-        ):
-
-            error(
-                "Invalid destination number."
-            )
-
-            continue
+        return None
 
 
-        return recommendations[
-            choice - 1
-        ]
+    return recommendations[
+        choice - 1
+    ]

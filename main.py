@@ -1,55 +1,71 @@
-from tripmate.trip import (
-    create_trip,
-    search_trip,
-    update_country,
-    update_city,
-    update_dates,
-    update_budget,
-    delete_trip
+from tripmate.ai_helper import (
+    correct_location_name,
+    display_ai_recommendations,
+    display_selected_recommendation,
+    get_travel_recommendations,
+    select_ai_destination
+)
+
+from tripmate.colors import (
+    ai,
+    error,
+    info,
+    success,
+    warning
 )
 
 from tripmate.expenses import (
     add_expense,
-    get_trip_expenses,
-    get_expense,
     calculate_total_expenses,
+    delete_expense,
     display_trip_expenses,
-    delete_expense
-)
-
-from tripmate.validation import (
-    get_text_input,
-    get_positive_float,
-    get_positive_int,
-    get_non_negative_int,
-    get_menu_choice,
-    get_yes_no,
-    get_trip_dates,
-    get_date,
-    calculate_end_date,
-    get_expense_category
-)
-
-from tripmate.colors import (
-    error,
-    warning,
-    info,
-    ai
-)
-
-from tripmate.storage import (
-    load_trips,
-    save_trips,
-    load_expenses,
-    save_expenses,
-    get_next_trip_id,
-    get_next_expense_id
+    get_expense,
+    get_trip_expenses,
+    update_expense
 )
 
 from tripmate.reports import (
     display_all_trips,
     display_trip_details,
-    display_trip_report
+    display_trip_report,
+    export_trip_to_csv
+)
+
+from tripmate.storage import (
+    get_next_expense_id,
+    get_next_trip_id,
+    load_expenses,
+    load_trips,
+    save_expenses,
+    save_trips
+)
+
+from tripmate.trip import (
+    create_trip,
+    delete_trip,
+    search_trip,
+    update_budget,
+    update_city,
+    update_country,
+    update_dates
+)
+
+from tripmate.utils import (
+    format_money,
+    today_str
+)
+
+from tripmate.validation import (
+    calculate_end_date,
+    get_date,
+    get_expense_category,
+    get_menu_choice,
+    get_non_negative_int,
+    get_positive_float,
+    get_positive_int,
+    get_text_input,
+    get_trip_dates,
+    get_yes_no
 )
 
 from tripmate.weather import (
@@ -57,17 +73,90 @@ from tripmate.weather import (
     find_location
 )
 
-from tripmate.ai_helper import (
-    correct_location_name,
-    get_travel_recommendations,
-    display_ai_recommendations,
-    display_selected_recommendation,
-    select_ai_destination
-)
-
 
 trips = load_trips()
+
 expenses = load_expenses()
+
+
+def print_menu(
+    title: str,
+    options: list
+):
+
+    print(
+        "\n================================"
+    )
+
+    print(
+        f"   {title}"
+    )
+
+    print(
+        "================================"
+    )
+
+
+    for index, option in enumerate(
+        options,
+        start=1
+    ):
+
+        print(
+            f"{index}. {option}"
+        )
+
+
+def warn_if_over_budget(
+    trip
+):
+
+    spent = calculate_total_expenses(
+        expenses,
+        trip.trip_id
+    )
+
+
+    if spent > trip.budget:
+
+        warning(
+            "Warning: this trip is "
+            "over budget "
+            f"({format_money(spent)} "
+            f"of {format_money(trip.budget)})."
+        )
+
+
+def choose_from(
+    title: str,
+    options: dict,
+    message: str
+) -> str:
+
+    ai(
+        f"\n{title}"
+    )
+
+
+    for number, label in options.items():
+
+        print(
+            f"{number}. {label}"
+        )
+
+
+    choice = get_menu_choice(
+        message,
+        1,
+        len(
+            options
+        )
+    )
+
+
+    return options[
+        choice
+    ]
 
 
 def get_confirmed_location(
@@ -83,6 +172,7 @@ def get_confirmed_location(
                 f"\n--- AI: {title} ---"
             )
 
+
         else:
 
             info(
@@ -94,45 +184,58 @@ def get_confirmed_location(
             "Enter country: "
         )
 
+
         city = get_text_input(
             "Enter city: "
         )
 
 
-        if ai_mode:
+        ai(
+            "\nGemini is checking "
+            "the spelling of the location..."
+        )
+
+
+        corrected = correct_location_name(
+            city,
+            country
+        )
+
+
+        if (
+            corrected[
+                "city"
+            ].lower()
+            !=
+            city.lower()
+            or
+            corrected[
+                "country"
+            ].lower()
+            !=
+            country.lower()
+        ):
 
             ai(
-                "\nAI is checking and correcting "
-                "the location..."
-            )
-
-        else:
-
-            info(
-                "\nChecking location..."
+                f"AI suggestion: "
+                f"{corrected['city']}, "
+                f"{corrected['country']}"
             )
 
 
-        corrected = (
-            correct_location_name(
-                city,
-                country
-            )
-        )
-
-
-        corrected_city = (
-            corrected["city"]
-        )
-
-        corrected_country = (
-            corrected["country"]
+        info(
+            "Validating location with "
+            "the location service..."
         )
 
 
         location = find_location(
-            corrected_city,
-            corrected_country
+            corrected[
+                "city"
+            ],
+            corrected[
+                "country"
+            ]
         )
 
 
@@ -143,12 +246,9 @@ def get_confirmed_location(
             )
 
 
-            retry = get_yes_no(
+            if get_yes_no(
                 "Try again? (y/n): "
-            )
-
-
-            if retry:
+            ):
 
                 continue
 
@@ -158,12 +258,17 @@ def get_confirmed_location(
 
         location_city = location.get(
             "name",
-            corrected_city
+            corrected[
+                "city"
+            ]
         )
+
 
         location_country = location.get(
             "country",
-            corrected_country
+            corrected[
+                "country"
+            ]
         )
 
 
@@ -171,18 +276,16 @@ def get_confirmed_location(
             "\nDid you mean:"
         )
 
+
         print(
             f"{location_city}, "
             f"{location_country}"
         )
 
 
-        confirmed = get_yes_no(
+        if get_yes_no(
             "Use this location? (y/n): "
-        )
-
-
-        if confirmed:
+        ):
 
             return {
                 "city": location_city,
@@ -191,7 +294,8 @@ def get_confirmed_location(
 
 
         warning(
-            "Please enter the location again."
+            "Please enter "
+            "the location again."
         )
 
 
@@ -224,16 +328,17 @@ def create_trip_workflow():
     )
 
 
-    trip_id = (
-        get_next_trip_id()
-    )
-
-
     create_trip(
         trips,
-        trip_id,
-        destination["country"],
-        destination["city"],
+        get_next_trip_id(
+            trips
+        ),
+        destination[
+            "country"
+        ],
+        destination[
+            "city"
+        ],
         start_date,
         end_date,
         budget
@@ -251,24 +356,14 @@ def update_trip_menu(
 
     while True:
 
-        print(
-            "\n--- Update Trip ---"
-        )
-
-        print(
-            "1. Destination"
-        )
-
-        print(
-            "2. Dates"
-        )
-
-        print(
-            "3. Budget"
-        )
-
-        print(
-            "4. Back"
+        print_menu(
+            "Update Trip",
+            [
+                "Destination",
+                "Dates",
+                "Budget",
+                "Back"
+            ]
         )
 
 
@@ -295,13 +390,19 @@ def update_trip_menu(
 
             update_country(
                 trip,
-                destination["country"]
+                destination[
+                    "country"
+                ]
             )
+
 
             update_city(
                 trip,
-                destination["city"]
+                destination[
+                    "city"
+                ]
             )
+
 
             save_trips(
                 trips
@@ -314,11 +415,13 @@ def update_trip_menu(
                 get_trip_dates()
             )
 
+
             update_dates(
                 trip,
                 start_date,
                 end_date
             )
+
 
             save_trips(
                 trips
@@ -347,23 +450,22 @@ def update_trip_menu(
                     "than current spending."
                 )
 
+
                 print(
                     f"Current spending: "
-                    f"{current_spent:,.2f} SAR"
+                    f"{format_money(current_spent)}"
                 )
+
 
                 print(
                     f"New budget: "
-                    f"{budget:,.2f} SAR"
+                    f"{format_money(budget)}"
                 )
 
 
-                confirm = get_yes_no(
+                if not get_yes_no(
                     "Continue? (y/n): "
-                )
-
-
-                if not confirm:
+                ):
 
                     warning(
                         "Budget update cancelled."
@@ -376,6 +478,7 @@ def update_trip_menu(
                 trip,
                 budget
             )
+
 
             save_trips(
                 trips
@@ -418,17 +521,25 @@ def add_expense_workflow(
     )
 
 
-    current_spent = (
-        calculate_total_expenses(
-            expenses,
-            trip.trip_id
-        )
+    expense_date = get_date(
+        (
+            "Enter expense date "
+            "(YYYY-MM-DD, "
+            "press Enter for today): "
+        ),
+        allow_past=True,
+        allow_future=False,
+        default=today_str()
     )
 
 
     remaining = (
         trip.budget
-        - current_spent
+        -
+        calculate_total_expenses(
+            expenses,
+            trip.trip_id
+        )
     )
 
 
@@ -442,21 +553,19 @@ def add_expense_workflow(
 
         print(
             f"Remaining budget: "
-            f"{remaining:,.2f} SAR"
+            f"{format_money(remaining)}"
         )
+
 
         print(
             f"Expense amount: "
-            f"{amount:,.2f} SAR"
+            f"{format_money(amount)}"
         )
 
 
-        confirm = get_yes_no(
+        if not get_yes_no(
             "Add it anyway? (y/n): "
-        )
-
-
-        if not confirm:
+        ):
 
             warning(
                 "Expense cancelled."
@@ -465,18 +574,16 @@ def add_expense_workflow(
             return
 
 
-    expense_id = (
-        get_next_expense_id()
-    )
-
-
     add_expense(
         expenses,
-        expense_id,
+        get_next_expense_id(
+            expenses
+        ),
         trip.trip_id,
         title,
         category,
-        amount
+        amount,
+        expense_date
     )
 
 
@@ -485,30 +592,21 @@ def add_expense_workflow(
     )
 
 
-def delete_expense_workflow(
-    trip
+def select_expense(
+    trip,
+    action: str
 ):
 
-    info(
-        "\n--- Delete Expense ---"
-    )
-
-
-    trip_expenses = (
-        get_trip_expenses(
-            expenses,
-            trip.trip_id
-        )
-    )
-
-
-    if not trip_expenses:
+    if not get_trip_expenses(
+        expenses,
+        trip.trip_id
+    ):
 
         warning(
             "This trip has no expenses."
         )
 
-        return
+        return None
 
 
     display_trip_expenses(
@@ -517,10 +615,9 @@ def delete_expense_workflow(
     )
 
 
-    expense_id = (
-        get_positive_int(
-            "Enter expense ID to delete: "
-        )
+    expense_id = get_positive_int(
+        f"Enter expense ID "
+        f"to {action}: "
     )
 
 
@@ -538,6 +635,128 @@ def delete_expense_workflow(
             "belong to this trip."
         )
 
+
+    return expense
+
+
+def edit_expense_workflow(
+    trip
+):
+
+    info(
+        "\n--- Edit Expense ---"
+    )
+
+
+    expense = select_expense(
+        trip,
+        "edit"
+    )
+
+
+    if expense is None:
+
+        return
+
+
+    print_menu(
+        "Edit Expense",
+        [
+            "Title",
+            "Category",
+            "Amount",
+            "Date",
+            "Cancel"
+        ]
+    )
+
+
+    choice = get_menu_choice(
+        "What do you want to edit? ",
+        1,
+        5
+    )
+
+
+    if choice == 1:
+
+        update_expense(
+            expense,
+            title=get_text_input(
+                "Enter new title: "
+            )
+        )
+
+
+    elif choice == 2:
+
+        update_expense(
+            expense,
+            category=(
+                get_expense_category()
+            )
+        )
+
+
+    elif choice == 3:
+
+        update_expense(
+            expense,
+            amount=get_positive_float(
+                "Enter new amount: "
+            )
+        )
+
+
+    elif choice == 4:
+
+        update_expense(
+            expense,
+            date=get_date(
+                "Enter new date "
+                "(YYYY-MM-DD): ",
+                allow_past=True,
+                allow_future=False
+            )
+        )
+
+
+    elif choice == 5:
+
+        warning(
+            "Edit cancelled."
+        )
+
+        return
+
+
+    save_expenses(
+        expenses
+    )
+
+
+    warn_if_over_budget(
+        trip
+    )
+
+
+def delete_expense_workflow(
+    trip
+):
+
+    info(
+        "\n--- Delete Expense ---"
+    )
+
+
+    expense = select_expense(
+        trip,
+        "delete"
+    )
+
+
+    if expense is None:
+
         return
 
 
@@ -545,19 +764,17 @@ def delete_expense_workflow(
         "\nSelected Expense:"
     )
 
+
     print(
-        f"{expense['title']} | "
-        f"{expense['category']} | "
-        f"{expense['amount']:,.2f} SAR"
+        f"{expense.title} | "
+        f"{expense.category} | "
+        f"{format_money(expense.amount)}"
     )
 
 
-    confirm = get_yes_no(
+    if not get_yes_no(
         "Delete this expense? (y/n): "
-    )
-
-
-    if not confirm:
+    ):
 
         warning(
             "Delete cancelled."
@@ -566,17 +783,31 @@ def delete_expense_workflow(
         return
 
 
-    deleted = delete_expense(
+    if delete_expense(
         expenses,
         trip.trip_id,
-        expense_id
-    )
-
-
-    if deleted:
+        expense.expense_id
+    ):
 
         save_expenses(
             expenses
+        )
+
+
+def export_report_workflow(
+    trip
+):
+
+    path = export_trip_to_csv(
+        trip,
+        expenses
+    )
+
+
+    if path is not None:
+
+        success(
+            f"Report saved to: {path}"
         )
 
 
@@ -629,58 +860,35 @@ def manage_trip_workflow():
         return
 
 
+    options = [
+        "View Trip Details",
+        "Update Trip",
+        "Add Expense",
+        "Edit Expense",
+        "Delete Expense",
+        "Trip Report",
+        "Export Report (CSV)",
+        "Check Trip Weather",
+        "Delete Trip",
+        "Back"
+    ]
+
+
     while True:
 
-        print(
-            "\n================================"
-        )
-
-        print(
-            f"   {trip.city}, "
-            f"{trip.country}"
-        )
-
-        print(
-            "================================"
-        )
-
-        print(
-            "1. View Trip Details"
-        )
-
-        print(
-            "2. Update Trip"
-        )
-
-        print(
-            "3. Add Expense"
-        )
-
-        print(
-            "4. Delete Expense"
-        )
-
-        print(
-            "5. Trip Report"
-        )
-
-        print(
-            "6. Check Trip Weather"
-        )
-
-        print(
-            "7. Delete Trip"
-        )
-
-        print(
-            "8. Back"
+        print_menu(
+            f"{trip.city}, "
+            f"{trip.country}",
+            options
         )
 
 
         choice = get_menu_choice(
             "Enter your choice: ",
             1,
-            8
+            len(
+                options
+            )
         )
 
 
@@ -708,12 +916,19 @@ def manage_trip_workflow():
 
         elif choice == 4:
 
-            delete_expense_workflow(
+            edit_expense_workflow(
                 trip
             )
 
 
         elif choice == 5:
+
+            delete_expense_workflow(
+                trip
+            )
+
+
+        elif choice == 6:
 
             display_trip_report(
                 trip,
@@ -721,14 +936,21 @@ def manage_trip_workflow():
             )
 
 
-        elif choice == 6:
+        elif choice == 7:
+
+            export_report_workflow(
+                trip
+            )
+
+
+        elif choice == 8:
 
             display_weather_for_trip(
                 trip
             )
 
 
-        elif choice == 7:
+        elif choice == 9:
 
             display_trip_details(
                 trip,
@@ -737,17 +959,15 @@ def manage_trip_workflow():
 
 
             warning(
-                "\nDeleting this trip will "
-                "also delete all its expenses."
+                "\nDeleting this trip "
+                "will also delete "
+                "all its expenses."
             )
 
 
-            confirm = get_yes_no(
+            if not get_yes_no(
                 "Delete this trip? (y/n): "
-            )
-
-
-            if not confirm:
+            ):
 
                 warning(
                     "Delete cancelled."
@@ -756,14 +976,11 @@ def manage_trip_workflow():
                 continue
 
 
-            deleted = delete_trip(
+            if delete_trip(
                 trips,
                 expenses,
                 trip.trip_id
-            )
-
-
-            if deleted:
+            ):
 
                 save_trips(
                     trips
@@ -776,7 +993,7 @@ def manage_trip_workflow():
                 break
 
 
-        elif choice == 8:
+        elif choice == 10:
 
             break
 
@@ -804,6 +1021,7 @@ def ai_recommendation_workflow():
     ai(
         "\nSTEP 1 - DEPARTURE LOCATION"
     )
+
 
     print(
         "Where are you traveling from?"
@@ -839,8 +1057,8 @@ def ai_recommendation_workflow():
 
 
     days = get_positive_int(
-        "How many days do you want "
-        "to travel? "
+        "How many days do you "
+        "want to travel? "
     )
 
 
@@ -862,153 +1080,68 @@ def ai_recommendation_workflow():
 
 
     info(
-        f"End date calculated automatically: "
-        f"{end_date}"
+        f"End date calculated "
+        f"automatically: {end_date}"
     )
-
-
-    ai(
-        "\nSTEP 5 - WEATHER PREFERENCE"
-    )
-
-    print(
-        "1. Cold"
-    )
-
-    print(
-        "2. Mild"
-    )
-
-    print(
-        "3. Warm"
-    )
-
-    print(
-        "4. No Preference"
-    )
-
-
-    weather_choice = (
-        get_menu_choice(
-            "Choose weather: ",
-            1,
-            4
-        )
-    )
-
-
-    weather_options = {
-        1: "Cold",
-        2: "Mild",
-        3: "Warm",
-        4: "No preference"
-    }
 
 
     weather_preference = (
-        weather_options[
-            weather_choice
-        ]
-    )
-
-
-    ai(
-        "\nSTEP 6 - ACTIVITIES"
-    )
-
-    print(
-        "1. Nature"
-    )
-
-    print(
-        "2. Shopping"
-    )
-
-    print(
-        "3. Culture and History"
-    )
-
-    print(
-        "4. Relaxation"
-    )
-
-    print(
-        "5. Adventure"
-    )
-
-
-    activity_choice = (
-        get_menu_choice(
-            "Choose activity type: ",
-            1,
-            5
+        choose_from(
+            "STEP 5 - WEATHER PREFERENCE",
+            {
+                1: "Cold",
+                2: "Mild",
+                3: "Warm",
+                4: "No preference"
+            },
+            "Choose weather: "
         )
     )
-
-
-    activity_options = {
-        1: "Nature",
-        2: "Shopping",
-        3: "Culture and History",
-        4: "Relaxation",
-        5: "Adventure"
-    }
 
 
     activity_preference = (
-        activity_options[
-            activity_choice
-        ]
-    )
-
-
-    ai(
-        "\nSTEP 7 - TRAVEL STYLE"
-    )
-
-    print(
-        "1. Budget"
-    )
-
-    print(
-        "2. Comfortable"
-    )
-
-    print(
-        "3. Luxury"
-    )
-
-
-    style_choice = (
-        get_menu_choice(
-            "Choose travel style: ",
-            1,
-            3
+        choose_from(
+            "STEP 6 - ACTIVITIES",
+            {
+                1: "Nature",
+                2: "Shopping",
+                3: "Culture and History",
+                4: "Relaxation",
+                5: "Adventure"
+            },
+            "Choose activity type: "
         )
     )
 
 
-    styles = {
-        1: "Budget",
-        2: "Comfortable",
-        3: "Luxury"
-    }
-
-
     travel_style = (
-        styles[
-            style_choice
-        ]
+        choose_from(
+            "STEP 7 - TRAVEL STYLE",
+            {
+                1: "Budget",
+                2: "Comfortable",
+                3: "Luxury"
+            },
+            "Choose travel style: "
+        )
     )
 
 
     ai(
-        "\nGemini is analyzing your "
-        "travel preferences..."
+        "\nGemini is analyzing "
+        "your travel preferences..."
     )
+
 
     ai(
         "Generating AI recommendations..."
+    )
+
+
+    info(
+        "Budget fit is estimated "
+        "and does not use live "
+        "flight prices."
     )
 
 
@@ -1018,8 +1151,12 @@ def ai_recommendation_workflow():
             days,
             start_date,
             end_date,
-            departure["city"],
-            departure["country"],
+            departure[
+                "city"
+            ],
+            departure[
+                "country"
+            ],
             weather_preference,
             activity_preference,
             travel_style
@@ -1037,14 +1174,11 @@ def ai_recommendation_workflow():
     )
 
 
-    create_from_ai = get_yes_no(
-        "\nWould you like to create a trip "
-        "from one of these AI recommendations? "
-        "(y/n): "
-    )
-
-
-    if not create_from_ai:
+    if not get_yes_no(
+        "\nWould you like to create "
+        "a trip from one of these "
+        "AI recommendations? (y/n): "
+    ):
 
         return
 
@@ -1074,6 +1208,7 @@ def ai_recommendation_workflow():
         "city"
     )
 
+
     selected_country = selected.get(
         "country"
     )
@@ -1096,6 +1231,7 @@ def ai_recommendation_workflow():
         "\nAI recommendation selected."
     )
 
+
     info(
         "Validating destination "
         "with location service..."
@@ -1111,8 +1247,9 @@ def ai_recommendation_workflow():
     if location is None:
 
         error(
-            "The AI recommendation could not "
-            "be validated as a real location."
+            "The AI recommendation "
+            "could not be validated "
+            "as a real location."
         )
 
         return
@@ -1122,6 +1259,7 @@ def ai_recommendation_workflow():
         "name",
         selected_city
     )
+
 
     country = location.get(
         "country",
@@ -1133,19 +1271,17 @@ def ai_recommendation_workflow():
         "\nValidated Destination:"
     )
 
+
     print(
         f"{city}, {country}"
     )
 
 
-    trip_id = (
-        get_next_trip_id()
-    )
-
-
     create_trip(
         trips,
-        trip_id,
+        get_next_trip_id(
+            trips
+        ),
         country,
         city,
         start_date,
@@ -1163,6 +1299,7 @@ def ai_recommendation_workflow():
         "\nAI recommendation completed."
     )
 
+
     info(
         "Trip added to My Trips."
     )
@@ -1170,45 +1307,29 @@ def ai_recommendation_workflow():
 
 def main():
 
+    options = [
+        "Create Trip",
+        "My Trips",
+        "Manage Trip",
+        "AI Travel Planner",
+        "Exit"
+    ]
+
+
     while True:
 
-        print(
-            "\n================================"
-        )
-
-        print(
-            "            TRIPMATE"
-        )
-
-        print(
-            "================================"
-        )
-
-        print(
-            "1. Create Trip"
-        )
-
-        print(
-            "2. My Trips"
-        )
-
-        print(
-            "3. Manage Trip"
-        )
-
-        print(
-            "4. AI Travel Planner"
-        )
-
-        print(
-            "5. Exit"
+        print_menu(
+            "TRIPMATE",
+            options
         )
 
 
         choice = get_menu_choice(
             "Enter your choice: ",
             1,
-            5
+            len(
+                options
+            )
         )
 
 
@@ -1246,4 +1367,16 @@ def main():
 
 if __name__ == "__main__":
 
-    main()
+    try:
+
+        main()
+
+
+    except (
+        KeyboardInterrupt,
+        EOFError
+    ):
+
+        print(
+            "\n\nProgram ended."
+        )
